@@ -232,7 +232,7 @@ async function fetchStatus(){
         // summary
         document.getElementById("connSummary").textContent = "local network (demo)";
 
-        // kamera placeholder
+        // kamera placeholder : suan JPEG kullaniyoruz sonra MJPEG'e gecebiliriz
         const camImg = document.getElementById("cameraImg");
         const camPh = document.getElementById("cameraPlaceholder");
         
