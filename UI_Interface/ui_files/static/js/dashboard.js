@@ -235,13 +235,17 @@ async function fetchStatus(){
         // kamera placeholder: simdilik bos sonra bak !!!!!!
         const camImg = document.getElementById("cameraImg");
         const camPh = document.getElementById("cameraPlaceholder");
+        
+        const camOk = data.connections?.camera === true;
         if (camImg && camPh){
-            if(camImg.src && camImg.src.length > 0){
+            if(camOk){
                 camImg.style.display = "block";
                 camPh.style.display = "none";
+                camImg.src = "/api/camera/snapshot?t=" + Date.now();
             } else{
                 camImg.style.display = "none";
                 camPh.style.display = "grid";
+                camImg.src = "";
             }
         }
     }catch(e){
