@@ -212,7 +212,7 @@ async function fetchStatus(){
         setText("posZ", data.robot?.z ?? "-");
 
         // test
-         setText("testMode", data.teststation?.mode ?? "-");
+        setText("testMode", data.teststation?.mode ?? "-");
         setText("testAdc", data.teststation?.last_adc ?? "-");
         setText("testV", data.teststation?.last_voltage_v ?? "-");
         setText("testResult", data.teststation?.last_result ?? "-");
@@ -223,18 +223,14 @@ async function fetchStatus(){
         const historyBox = document.getElementById("historyBox");
         if (historyBox) historyBox.textContent = logs.join("\n");
 
-        // baglanti durumu : simdilik test sonra degistir !!!!!!!
+        // baglanti durumu
         setBadge("badgePi", true, "Pi");
+        const conn = data.connections || {};
+        setBadge("badgeArduino", conn.arduino, "Arduino");
+        setBadge("badgeCamera", conn.camera, "Camera");
 
-        if (data.connections){
-            setBadge("badgeArduino", data.connections.arduino, "Arduino");
-            setBadge("badgeCamera", data.connections.camera, "Camera");
-            setText("connSummary", "yerel ağ");
-        } else{
-            setBadge("badgeArduino", null, "Arduino");
-            setBadge("badgeCamera", null, "Camera");
-            setText("connSummary", "local network (demo)");
-        }
+// summary
+document.getElementById("connSummary").textContent = "local network (demo)";
 
         // kamera placeholder: simdilik bos sonra bak !!!!!!
         const camImg = document.getElementById("cameraImg");
