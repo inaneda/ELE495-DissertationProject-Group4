@@ -1,0 +1,223 @@
+<!--
+File Name       : index.html
+Author          : Eda
+Project         : ELE 496 Dissertation Project - SMD Pick and Place Machine
+Created Date    : 2026-01-23
+Last Modified   : 2026-02-01
+
+Description:
+This file defines the main web-based user interface of the SMD Pick and Place Machine.
+It provides a dashboard layout that displays:
+    - Task history
+    - Test station measurement results
+    - PCB placement (PNP) plan
+    - Machine status
+    - Connection status
+    - Camera view
+    - Control commands (Start, Stop, Reset)
+
+The page structure is designed according to the project requirements
+and is styled using Bootstrap and custom CSS.
+-->
+
+
+<!doctype html>
+<html lang="en">
+
+<head>
+
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>ELE495 / ELE496 - SMD Pick&Place UI</title>
+
+    <!-- bootstrap -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- style -->
+    <!-- eski !!!!!!
+    <link href="C:\beneda\ELE495BitirmeProjesi\UI_Interface\ui_files\static\css\style.css" rel="stylesheet"> 
+    -->
+    <link rel="stylesheet" href="/static/css/style.css"> 
+    
+    
+
+</head>
+
+
+<body class="app-bg">
+
+
+<!-- header -->
+<header class="app-header">
+    <div class="container-fluid px-3 py-2 d-flex align-items-center justify-content-between">
+        <div class="fw-semibold">ELE 496 Dissertation Project, Spring 2026</div>
+        <div class="fw-semibold">SMD Pick And Place Machine</div>
+    </div>
+</header>
+
+<!-- body -->
+<main class="container-fluid px-3 py-3">
+     <div class="layout-grid">
+        
+
+        <!-- sol panel - gorev gecmisi -->
+        <section class = "panel panel-green" id="panel-history">
+            <div class="panel-title">TASK HISTORY</div>
+            <div class="panel-body">
+                <pre id="historyBox" class="logbox">loading...</pre>
+            </div>
+        </section>
+
+
+        <!-- orta ust panel - test istasyonu -->
+         <section class = "panel panel-yellow" id="panel-test">
+            <div class="panel-title">TEST STATION OUTCOMES</div>
+            <div class="panel-body panel-body-col">
+                <div class="row g-2">
+                    <!-- -->
+                    <div class="col-6">
+                        <div class="mini-card">
+                            <div class="mini-label">MODE</div>
+                            <div class="mini-value" id="testMode">-</div>
+                        </div>
+                    </div>
+                    <!-- -->
+                    <div class="col-6">
+                        <div class="mini-card">
+                            <div class="mini-label">RESULT</div>
+                            <div class="mini-value" id="testResult">-</div>
+                        </div>
+                    </div>
+                    <!-- -->
+                    <div class="col-6">
+                        <div class="mini-card">
+                            <div class="mini-label">ADC</div>
+                            <div class="mini-value" id="testAdc">-</div>
+                        </div>
+                    </div>
+                    <!-- -->
+                    <div class="col-6">
+                        <div class="mini-card">
+                            <div class="mini-label">V (Volt)</div>
+                            <div class="mini-value" id="testV">-</div>
+                        </div>
+                    </div>
+                    <!-- -->
+                    <div class="col-12">
+                        <div class="text-muted small">UPDATE: <span id="testUpdated">-</span></div>
+                    </div>
+                </div>
+                <div class="test-actions">
+                    <button class="btn btn-mode" onclick="sendCmd('set_test_mode',{mode:'resistor'})">Resistor</button>
+                    <button class="btn btn-mode" onclick="sendCmd('set_test_mode',{mode:'diode'})">Diode</button>
+                    <button class="btn btn-mode btn-mode-off" onclick="sendCmd('set_test_mode',{mode:'none'})">OFF</button>
+                </div>
+            </div>
+        </section>
+
+
+        <!-- sag orta panel - dizgi plani -->
+        <section class = "panel panel-blue" id="panel-plan">
+            <div class="panel-title">PNP FILE - Placement Plan</div>
+            <div class="panel-body">
+                <div class="plan-wrap">
+                    <!-- sol komponent butonlari - R1, R2, D1, D2 -->
+                    <div class="plan-parts">
+                        <button class="select-btn pick-btn" data-pick="d1">D1</button>
+                        <button class="select-btn pick-btn" data-pick="d2">D2</button>
+                        <button class="select-btn pick-btn" data-pick="r1">R1</button>
+                        <button class="select-btn pick-btn" data-pick="r2">R2</button>
+                        <div class="small text-muted mt-2">SELECTED: <b id="selectedPart">-</b></div>
+                    </div>
+                    <!-- sag PCB padleri - a, b, c, d -->
+                    <div class="pcb">
+                        <div class="pcb-title">PCB</div>
+                        <button class="pad place-btn" data-pad="konum-a" data-place="a">a</button>
+                        <button class="pad place-btn" data-pad="konum-b" data-place="b">b</button>
+                        <button class="pad place-btn" data-pad="konum-c" data-place="c">c</button>
+                        <button class="pad place-btn" data-pad="konum-d" data-place="d">d</button>
+                    </div> 
+                </div>
+            </div>
+        </section>
+        
+
+        <!-- sag ust panel - komponent-pad eslestirmesinin gosterimi -->
+         <section class = "panel panel-pink" id="panel-pairing">
+            <div class="panel-title">PAIRING</div>
+            <div class="panel-body">
+                <div class="pairing-hint">Pick Order - Place Order</div>
+                <div id="pairingList" class="pairing-list">
+                    <div class="pairing-empty">Component and pad mapping has not been done yet.</div>
+                </div>
+            </div>
+        </section>
+
+
+        <!-- orta alt sol panel - makine durumu -->
+        <section class = "panel panel-purple" id="panel-robot">
+            <div class="panel-title">MACHINE STATUS</div>
+            <div class="panel-body">
+                <div class="status-line"><span class="status-label">STATUS:</span> <span id="robotStatus">-</span></div>
+                <div class="status-line"><span class="status-label">TASK:</span> <span id="robotTask">-</span></div>
+                <div class="status-line"><span class="status-label">LOCATION:</span>
+                    X=<span id="posX">-</span> 
+                    Y=<span id="posY">-</span> 
+                    Z=<span id="posZ">-</span>
+                </div>
+            </div>
+        </section>
+
+
+        <!-- orta alt panel - baglanti durumu ve kamera -->
+        <section class = "panel panel-white" id="panel-camera">
+            <div class="panel-title">
+                <span>CONNECTION STATUS</span>
+                <span class="ms-2 small" id="connSummary">-</span>
+            </div>
+            <div class="panel-body">
+                <!-- baglanti durumlari-->
+                <div class="conn-badges mb-2">
+                    <span class="badge text-bg-secondary" id="badgePi">RaspberryPi: ?</span>
+                    <span class="badge text-bg-secondary" id="badgeArduino">Arduino: ?</span>
+                    <span class="badge text-bg-secondary" id="badgeCamera">Camera: ?</span>
+                </div>
+                <!-- canli yayin - simdilik placeholder - sonra duzenle -->
+                <div class="camera-box">
+                    <img id="cameraImg" src="" alt="Camera View" />
+                    <div class="camera-placeholder" id="cameraPlaceholder">
+                        CAMERA VIEW
+                    </div>
+                </div>
+            </div>
+        </section>
+
+
+        <!-- sag alt panel - komutlar -->
+        <section class="panel panel-gray" id="panel-commands">
+            <div class="panel-title">COMMANDS</div>
+            <div class="panel-body d-flex flex-column align-items-center gap-3">
+                <button type="button" class="cmd-btn cmd-start" id="btnStart">START</button>
+                <button type="button" class="cmd-btn cmd-stop" id="btnStop">STOP</button>
+                <button type="button" class="cmd-btn cmd-reset" id="btnReset">RESET</button>
+            </div>
+        </section>
+        
+
+     </div>
+</main>
+
+<!-- footer-->
+<footer class="app-footer">
+    <div class="container-fluid px-3 py-2 text-center small text-muted">
+        student info.s - date - ?  
+    </div>
+</footer>
+    <!-- fonksiyon -->
+    <!-- eski  !!!!!!!! 
+    <script src="C:\beneda\ELE495BitirmeProjesi\UI_Interface\ui_files\static\css\style.css"></script>
+    -->
+    <script src="/static/js/dashboard.js"></script>
+    
+    
+</body>
+</html>

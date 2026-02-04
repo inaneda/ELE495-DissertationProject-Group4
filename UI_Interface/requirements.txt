@@ -1,0 +1,19 @@
+# Web framework (backend)
+fastapi
+uvicorn
+
+# Alternative backend (if Flask is preferred)
+flask
+
+# Serial communication (Arduino)
+pyserial
+
+# Camera & image handling (future use)
+opencv-python
+numpy
+
+# Data handling & logging
+pydantic
+
+# HTTP requests (optional, for future extensions)
+requests
