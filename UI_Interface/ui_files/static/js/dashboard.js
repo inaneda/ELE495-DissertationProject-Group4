@@ -232,7 +232,7 @@ async function fetchStatus(){
         // summary
         document.getElementById("connSummary").textContent = "local network (demo)";
 
-        // kamera placeholder: simdilik bos sonra bak !!!!!!
+        // kamera placeholder
         const camImg = document.getElementById("cameraImg");
         const camPh = document.getElementById("cameraPlaceholder");
         
@@ -241,7 +241,6 @@ async function fetchStatus(){
             if(camOk){
                 camImg.style.display = "block";
                 camPh.style.display = "none";
-                camImg.src = "/api/camera/snapshot?t=" + Date.now();
             } else{
                 camImg.style.display = "none";
                 camPh.style.display = "grid";
@@ -255,6 +254,13 @@ async function fetchStatus(){
         setBadge("badgeCamera", null, "Camera");
         document.getElementById("connSummary").textContent = "no connection";
     }
+}
+
+// kamera icin yineleme
+function refreshCamera(){
+    const camImg = document.getElementById("cameraImg");
+    if(!camImg) return;
+    camImg.src = "/api/camera/snapshot?t=" + Date.now();
 }
 
 // start-stop-reset butonlari
@@ -277,5 +283,8 @@ document.addEventListener("DOMContentLoaded", () =>{
     bindCommandButtons();
     fetchStatus();
     setInterval(fetchStatus, 400); // 400ms polling - yenileme
+    // status ve camera icin yenileme farkli : status 400, camera 1000
+    setInterval(refreshCamera, 1000); // 1 FPS
+    refreshCamera();
 });
 
