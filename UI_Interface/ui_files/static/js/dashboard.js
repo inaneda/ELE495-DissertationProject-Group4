@@ -229,8 +229,8 @@ async function fetchStatus(){
         setBadge("badgeArduino", conn.arduino, "Arduino");
         setBadge("badgeCamera", conn.camera, "Camera");
 
-// summary
-document.getElementById("connSummary").textContent = "local network (demo)";
+        // summary
+        document.getElementById("connSummary").textContent = "local network (demo)";
 
         // kamera placeholder: simdilik bos sonra bak !!!!!!
         const camImg = document.getElementById("cameraImg");
