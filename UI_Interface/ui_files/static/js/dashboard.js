@@ -178,6 +178,35 @@ async function sendCmd(name, payload=null){
 }
 
 
+// send plan butonu icin fonksiyon
+async function sendPlan(){
+    if (pairingOrder.length === 0){
+        alert("Plan is empty. Please do component-pad pairing first.");
+        return;
+    }
+    try{
+        const res = await fetch("/api/plan",{
+            method: "POST",
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify({ items: pairingOrder })
+        });
+
+        if(!res.ok){
+        const txt = await res.text();
+        alert("Plan send failed.\n" + txt);
+        return;
+        }
+
+        const data = await res.json();
+        alert(`Plan sent successfully. Steps: ${data.count}`);
+    }catch(e){
+        console.warn("Plan send error:", e);
+        alert("Plan send error. Check console.");
+    }
+    await fetchStatus();
+}
+
+
 // baglanti durumu icin
 function setBadge(id, ok, label){
     const el = document.getElementById(id);
@@ -263,17 +292,17 @@ function refreshCamera(){
     camImg.src = "/api/camera/snapshot?t=" + Date.now();
 }
 
-// start-stop-reset butonlari
+// start-stop-reset butonlari + send plan butonu
 function bindCommandButtons() {
     const startBtn = document.getElementById("btnStart");
     const stopBtn = document.getElementById("btnStop");
     const resetBtn = document.getElementById("btnReset");
     const sendPlanBtn = document.getElementById("btnSendPlan");
-    
-    if (sendPlanBtn) sendPlanBtn.addEventListener("click", sendPlan);
+
     if (startBtn) startBtn.addEventListener("click", () => sendCmd("start"));
     if (stopBtn) stopBtn.addEventListener("click", () => sendCmd("stop"));
     if (resetBtn) resetBtn.addEventListener("click", () => sendCmd("reset"));
+    if (sendPlanBtn) sendPlanBtn.addEventListener("click", sendPlan);   
 }
 
 
@@ -293,32 +322,3 @@ document.addEventListener("DOMContentLoaded", () =>{
     setInterval(refreshCamera, 1000); // 1 FPS
     refreshCamera();
 });
-
-
-// pnp file gondermek icin
-async function sendPlan(){
-    if (pairingOrder.length === 0){
-        alert("Plan is empty. Please do component-pad pairing first.");
-        return;
-    }
-    try{
-        const res = await fetch("/api/plan",{
-            method: "POST",
-            headers: {"Content-Type": "application/json"},
-            body: JSON.stringify({ items: pairingOrder })
-        });
-
-        if(!res.ok){
-            const txt = await res.text();
-            alert("Plan send failed.\n" + txt);
-            return;
-        }
-        const data = await res.json();
-        alert(`Plan sent successfully. Steps: ${data.count}`);
-    }catch(e){
-        console.warn("Plan send error:", e);
-        alert("Plan send error. Check console.");
-    }
-    await fetchStatus();
-}
-
