@@ -268,7 +268,9 @@ function bindCommandButtons() {
     const startBtn = document.getElementById("btnStart");
     const stopBtn = document.getElementById("btnStop");
     const resetBtn = document.getElementById("btnReset");
-
+    const sendPlanBtn = document.getElementById("btnSendPlan");
+    
+    if (sendPlanBtn) sendPlanBtn.addEventListener("click", sendPlan);
     if (startBtn) startBtn.addEventListener("click", () => sendCmd("start"));
     if (stopBtn) stopBtn.addEventListener("click", () => sendCmd("stop"));
     if (resetBtn) resetBtn.addEventListener("click", () => sendCmd("reset"));
@@ -277,14 +279,46 @@ function bindCommandButtons() {
 
 // sayfa ilk acildiginda calisacak kod - init
 document.addEventListener("DOMContentLoaded", () =>{
+    
     setSelectedPart(null);
     renderPairingList();
+
     bindUIEvents();
     bindCommandButtons();
+
     fetchStatus();
     setInterval(fetchStatus, 400); // 400ms polling - yenileme
+    
     // status ve camera icin yenileme farkli : status 400, camera 1000
     setInterval(refreshCamera, 1000); // 1 FPS
     refreshCamera();
 });
+
+
+// pnp file gondermek icin
+async function sendPlan(){
+    if (pairingOrder.length === 0){
+        alert("Plan is empty. Please do component-pad pairing first.");
+        return;
+    }
+    try{
+        const res = await fetch("/api/plan",{
+            method: "POST",
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify({ items: pairingOrder })
+        });
+
+        if(!res.ok){
+            const txt = await res.text();
+            alert("Plan send failed.\n" + txt);
+            return;
+        }
+        const data = await res.json();
+        alert(`Plan sent successfully. Steps: ${data.count}`);
+    }catch(e){
+        console.warn("Plan send error:", e);
+        alert("Plan send error. Check console.");
+    }
+    await fetchStatus();
+}
 

@@ -30,6 +30,8 @@ from fastapi.templating import Jinja2Templates
 from src.app.routers import status
 from src.app.routers import commands
 from src.app.routers import camera
+from src.app.routers import plan
+
 
 
 # service baglama - tset amacli
@@ -92,4 +94,5 @@ def index(request: Request):
 app.include_router(status.router)
 app.include_router(commands.router)
 app.include_router(camera.router)
+app.include_router(plan.router)
 
