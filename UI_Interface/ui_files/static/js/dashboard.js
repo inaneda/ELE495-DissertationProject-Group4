@@ -166,13 +166,22 @@ function bindUIEvents(){
 // backend'e komut gonderme - robot ve test istasyonu icin
 async function sendCmd(name, payload=null){
     try{
-        await fetch("/api/commands/",{
+        const res = await fetch("/api/commands/",{
         method: "POST",
         headers: {"Content-Type": "application/json"},
         body: JSON.stringify({name, payload})
         });
+        
+        if(!res.ok){
+            const txt = await res.text();
+            alert(`Command failed: ${name}\n` + txt);
+            return;
+        }
+    
     }catch(e){
         console.warn("Command error:", e);
+        alert("Command error. Check console.");
+        return;
     }
     await fetchStatus(); // komuttan sonra yenile
 }

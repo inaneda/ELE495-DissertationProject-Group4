@@ -17,6 +17,7 @@ In later stages, this router will trigger hardware actions via services
 from fastapi import APIRouter
 from pydantic import BaseModel
 from datetime import datetime
+from fastapi import HTTPException
 
 # status router'inin icindeki SYSTEM_STATE'i kullaniyoruz
 from src.app.routers.status import SYSTEM_STATE
@@ -62,6 +63,11 @@ def post_command(cmd: CommandRequest):
 
     # START
     if name == "start":
+        # pnp file olmadan sistem calistirilamasin
+        plan = SYSTEM_STATE.get("plan", [])
+        if not plan:
+            raise HTTPException(status_code=400, detail="No plan. Please send plan first.")
+
         SYSTEM_STATE["robot"]["status"] = "running"
         SYSTEM_STATE["robot"]["current_task"] = "PNP cycle (demo)"
         _log("Command received: START")
