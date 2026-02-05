@@ -242,6 +242,15 @@ async function fetchStatus(){
             return;
         const data = await res.json();
 
+        const planCount = (data.plan || []).length;
+        const planTs = data.plan_received_at;
+
+        if (planCount > 0) {
+        setText("planInfo", `PLAN: LOADED (${planCount})  ${planTs ?? ""}`.trim());
+        } else {
+        setText("planInfo", "PLAN: EMPTY");
+}
+
         // robot
         setText("robotStatus", data.robot?.status ?? "-");
         setText("robotTask", data.robot?.current_task ?? "-");
