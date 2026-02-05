@@ -44,7 +44,9 @@ SYSTEM_STATE = {
     "connections": {
         "arduino": False,
         "camera": False
-    }
+    },
+    "plan": [],
+    "plan_received_at": None
 }
 
 # sistemin su anki durumunu alir : GET

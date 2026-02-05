@@ -10,6 +10,7 @@ This module defines endpoints to receive and store the placement plan
 (pick/place pairing order) sent from the dashboard UI.
 """
 
+from datetime import datetime
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
 from typing import List
@@ -34,10 +35,18 @@ def set_plan(req: PlanRequest):
     if len(req.items) == 0:
         raise HTTPException(status_code=400, detail="Plan is empty.")
 
-    # Store plan in state (later this can be persisted to file/db)
+    seen_parts = set()
+    for it in req.items:
+        p = it.part.lower().strip()
+        if p in seen_parts:
+            raise HTTPException(status_code=400, detail=f"Duplicate component in plan: {p}")
+        seen_parts.add(p)
+
     SYSTEM_STATE["plan"] = [item.model_dump() for item in req.items]
+    # zaman eklentisi
+    SYSTEM_STATE["plan_received_at"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    
+    # log
+    SYSTEM_STATE["logs"].append(f"[{SYSTEM_STATE['plan_received_at']}] Plan received: {len(req.items)} steps")
 
-    # Log
-    SYSTEM_STATE["logs"].append(f"Plan received: {len(req.items)} steps")
-
-    return {"ok": True, "count": len(req.items)}
+    return {"ok": True, "count": len(req.items), "received_at": SYSTEM_STATE["plan_received_at"]}
