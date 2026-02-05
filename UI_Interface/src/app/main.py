@@ -37,6 +37,7 @@ from src.app.routers import plan
 # service baglama - tset amacli
 from src.app.services.robot_service import robot_service
 from src.app.services.arduino_service import arduino_service
+from src.app.services.plan_runner import plan_runner
 
 
 ###
@@ -53,6 +54,8 @@ async def lifespan(app: FastAPI):
     # SHUTDOWN
     robot_service.stop()
     arduino_service.stop()
+    plan_runner.stop()
+
 
 # web uygulamasi
 app = FastAPI(

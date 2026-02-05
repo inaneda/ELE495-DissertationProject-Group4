@@ -22,6 +22,8 @@ from fastapi import HTTPException
 # status router'inin icindeki SYSTEM_STATE'i kullaniyoruz
 from src.app.routers.status import SYSTEM_STATE
 
+from src.app.services.plan_runner import plan_runner
+
 # tum endpointler
 router = APIRouter(
     prefix="/api/commands",
@@ -65,6 +67,12 @@ def post_command(cmd: CommandRequest):
     if name == "start":
         # pnp file olmadan sistem calistirilamasin
         plan = SYSTEM_STATE.get("plan", [])
+
+        # demo
+        plan_runner.start()
+        SYSTEM_STATE["robot"]["status"] = "running"
+        SYSTEM_STATE["robot"]["current_task"] = "PlanRunner running"
+
         if not plan:
             raise HTTPException(status_code=400, detail="No plan. Please send plan first.")
 
@@ -75,6 +83,12 @@ def post_command(cmd: CommandRequest):
 
     # STOP
     if name == "stop":
+
+        # demo
+        plan_runner.stop()
+        SYSTEM_STATE["robot"]["status"] = "stopped"
+        SYSTEM_STATE["robot"]["current_task"] = "-"
+
         SYSTEM_STATE["robot"]["status"] = "stopped"
         SYSTEM_STATE["robot"]["current_task"] = "-"
         _log("Command received: STOP")
@@ -82,6 +96,16 @@ def post_command(cmd: CommandRequest):
 
     # RESET
     if name == "reset":
+
+        # demo
+        plan_runner.stop()
+        SYSTEM_STATE["plan"] = []
+        SYSTEM_STATE["plan_received_at"] = None
+        SYSTEM_STATE["robot"]["status"] = "idle"
+        SYSTEM_STATE["robot"]["current_task"] = "-"
+        SYSTEM_STATE["logs"].append("System reset (plan cleared)")
+
+
         SYSTEM_STATE["robot"]["status"] = "idle"
         SYSTEM_STATE["robot"]["current_task"] = "-"
         SYSTEM_STATE["robot"]["x"] = 0
