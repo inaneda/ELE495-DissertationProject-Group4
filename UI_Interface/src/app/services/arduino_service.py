@@ -1,7 +1,7 @@
 """
 File Name       : arduino_service.py
 Author          : Eda
-Project         : ELE 496 Dissertation Project - SMD Pick and Place Machine
+Project         : ELE 495 Dissertation Project - SMD Pick and Place Machine
 Created Date    : 2026-02-04
 Last Modified   : 2026-02-04
 

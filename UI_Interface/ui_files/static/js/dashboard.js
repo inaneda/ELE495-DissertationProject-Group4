@@ -1,7 +1,7 @@
 /**
 * File Name       : dashboard.js
 * Author          : Eda
-* Project         : ELE 496 Dissertation Project - SMD Pick and Place Machine
+* Project         : ELE 495 Dissertation Project - SMD Pick and Place Machine
 * Created Date    : 2026-01-25
 * Last Modified   : 2026-02-01
 * 
@@ -20,6 +20,10 @@
 */
 
 "use strict";
+
+// API key
+const API_KEY = "dev-key-change-me";
+
 
 let selectedPart = null;
 // pad - komponent atamalarini tutuyor : { "konum-a": "d1" ... }
@@ -163,10 +167,24 @@ function bindUIEvents(){
 * pnp dosyasinin robota iletilmesi - sira ve komponent-pad eslestirmesi 
 */
 
+async function apiFetch(url, options = {}) {
+  const headers = options.headers ? {...options.headers} : {};
+  headers["X-API-Key"] = API_KEY;
+
+  // content type eklemek icin
+  if (options.body && !headers["Content-Type"]){
+    headers["Content-Type"] = "application/json";
+  }
+
+  return fetch(url, { ...options, headers });
+}
+
+
+
 // backend'e komut gonderme - robot ve test istasyonu icin
 async function sendCmd(name, payload=null){
     try{
-        const res = await fetch("/api/commands/",{
+        const res = await apiFetch("/api/commands/",{
         method: "POST",
         headers: {"Content-Type": "application/json"},
         body: JSON.stringify({name, payload})
@@ -194,7 +212,7 @@ async function sendPlan(){
         return;
     }
     try{
-        const res = await fetch("/api/plan",{
+        const res = await apiFetch("/api/plan",{
             method: "POST",
             headers: {"Content-Type": "application/json"},
             body: JSON.stringify({ items: pairingOrder })
@@ -237,7 +255,7 @@ function setBadge(id, ok, label){
 // sistemin tum durumlari icin
 async function fetchStatus(){
     try{
-        const res = await fetch("/api/status/");
+        const res = await apiFetch("/api/status/");
         if(!res.ok) 
             return;
         const data = await res.json();
@@ -307,7 +325,7 @@ async function fetchStatus(){
 function refreshCamera(){
     const camImg = document.getElementById("cameraImg");
     if(!camImg) return;
-    camImg.src = "/api/camera/snapshot?t=" + Date.now();
+    camImg.src = `/api/camera/snapshot?token=${encodeURIComponent(API_KEY)}&t=${Date.now()}`;
 }
 
 // start-stop-reset butonlari + send plan butonu

@@ -1,7 +1,7 @@
 """
 File Name       : camera.py
 Author          : Eda
-Project         : ELE 496 Dissertation Project - SMD Pick and Place Machine
+Project         : ELE 495 Dissertation Project - SMD Pick and Place Machine
 Created Date    : 2026-02-04
 Last Modified   : 2026-02-04
 
@@ -14,15 +14,12 @@ from fastapi import APIRouter, Response
 from src.app.services.camera_service import camera_service
 from src.app.routers.status import SYSTEM_STATE
 
-# API key
-from fastapi import Depends
-from src.app.security import require_api_key
-
+from fastapi import HTTPException, Query
+from src.app.core.config import API_KEY
 
 router = APIRouter(
     prefix="/api", 
     tags=["Camera"],
-    dependencies=[Depends(require_api_key)] # API key
 )
 
 
@@ -36,3 +33,8 @@ def camera_snapshot():
 
     SYSTEM_STATE["connections"]["camera"] = True
     return Response(content=jpg, media_type="image/jpeg")
+def snapshot(token: str = Query(default="")):
+    if token != API_KEY:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    ...
+
