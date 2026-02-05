@@ -17,7 +17,15 @@ from typing import List
 
 from src.app.routers.status import SYSTEM_STATE
 
-router = APIRouter(prefix="/api", tags=["Plan"])
+# API key
+from fastapi import Depends
+from src.app.security import require_api_key
+
+router = APIRouter(
+    prefix="/api",
+    tags=["Plan"],
+    dependencies=[Depends(require_api_key)] # API key
+)
 
 
 class PlanItem(BaseModel):

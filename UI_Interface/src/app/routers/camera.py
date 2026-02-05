@@ -14,14 +14,23 @@ from fastapi import APIRouter, Response
 from src.app.services.camera_service import camera_service
 from src.app.routers.status import SYSTEM_STATE
 
-router = APIRouter(prefix="/api", tags=["Camera"])
+# API key
+from fastapi import Depends
+from src.app.security import require_api_key
+
+
+router = APIRouter(
+    prefix="/api", 
+    tags=["Camera"],
+    dependencies=[Depends(require_api_key)] # API key
+)
 
 
 @router.get("/camera/snapshot")
 def camera_snapshot():
     jpg = camera_service.get_jpeg()
     if jpg is None:
-        # Kamera yoksa bağlantıyı false yap
+        # kamera yoksa : False
         SYSTEM_STATE["connections"]["camera"] = False
         return Response(content=b"", status_code=503)
 

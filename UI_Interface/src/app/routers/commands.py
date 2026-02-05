@@ -24,10 +24,15 @@ from src.app.routers.status import SYSTEM_STATE
 
 from src.app.services.plan_runner import plan_runner
 
+# API key
+from fastapi import Depends
+from src.app.security import require_api_key
+
 # tum endpointler
 router = APIRouter(
     prefix="/api/commands",
-    tags=["Commands"]
+    tags=["Commands"],
+    dependencies=[Depends(require_api_key)] # API key
 )
 
 

@@ -15,10 +15,15 @@ This endpoint is periodically polled by the dashboard frontend.
 
 from fastapi import APIRouter
 
+# API key
+from fastapi import Depends
+from src.app.security import require_api_key
+
 # Router
 router = APIRouter(
     prefix="/api/status",
-    tags=["Status"]
+    tags=["Status"],
+    dependencies=[Depends(require_api_key)] # API key
 )
 
 # sonra bak !!!!!!! - gecici veri
