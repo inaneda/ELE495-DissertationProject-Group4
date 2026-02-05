@@ -371,3 +371,9 @@ and academic-project-appropriate user interface.
 .cmd-plan:hover{
   background: #f4f4f4;
 }
+
+/* plan bilgisi icin */
+#planInfo{
+  line-height: 1.2;
+  opacity: 0.9;
+}
