@@ -31,7 +31,7 @@ from src.app.routers import status
 from src.app.routers import commands
 from src.app.routers import camera
 from src.app.routers import plan
-
+from src.app.routers import config as config_router
 
 
 # service baglama - tset amacli
@@ -98,4 +98,4 @@ app.include_router(status.router)
 app.include_router(commands.router)
 app.include_router(camera.router)
 app.include_router(plan.router)
-
+app.include_router(config_router.router)

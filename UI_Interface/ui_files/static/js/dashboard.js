@@ -22,7 +22,7 @@
 "use strict";
 
 // API key
-const API_KEY = "dev-key-change-me";
+let API_KEY = null;
 
 
 let selectedPart = null;
@@ -32,6 +32,8 @@ const assignments = {};
 // ekranda “Pick Order - Place Order” olarak gostermek icin tiklama sirasi
 // [{ part:"d1", padName:"konum-a", padLabel:"a" }, ...]
 const pairingOrder = [];
+
+let CAMERA_OK = false;
 
 
 // DOM - HTML yardimcilari
@@ -167,27 +169,32 @@ function bindUIEvents(){
 * pnp dosyasinin robota iletilmesi - sira ve komponent-pad eslestirmesi 
 */
 
-async function apiFetch(url, options = {}) {
-  const headers = options.headers ? {...options.headers} : {};
-  headers["X-API-Key"] = API_KEY;
+async function apiFetch(url, options = {}){
+    const headers = options.headers ? {...options.headers} : {};
+    if (API_KEY) headers["X-API-Key"] = API_KEY;
 
-  // content type eklemek icin
-  if (options.body && !headers["Content-Type"]){
-    headers["Content-Type"] = "application/json";
-  }
-
-  return fetch(url, { ...options, headers });
+    // content type eklemek icin
+    if (options.body && !headers["Content-Type"]){
+        headers["Content-Type"] = "application/json";
+    }
+    return fetch(url, { ...options, headers });
 }
 
+
+// backend config
+async function loadConfig() {
+    const res = await fetch("/api/config");
+    const data = await res.json();
+    API_KEY = data.api_key;
+}
 
 
 // backend'e komut gonderme - robot ve test istasyonu icin
 async function sendCmd(name, payload=null){
     try{
         const res = await apiFetch("/api/commands/",{
-        method: "POST",
-        headers: {"Content-Type": "application/json"},
-        body: JSON.stringify({name, payload})
+            method: "POST",
+            body: JSON.stringify({name, payload})
         });
         
         if(!res.ok){
@@ -214,7 +221,6 @@ async function sendPlan(){
     try{
         const res = await apiFetch("/api/plan",{
             method: "POST",
-            headers: {"Content-Type": "application/json"},
             body: JSON.stringify({ items: pairingOrder })
         });
 
@@ -293,6 +299,8 @@ async function fetchStatus(){
         const conn = data.connections || {};
         setBadge("badgeArduino", conn.arduino, "Arduino");
         setBadge("badgeCamera", conn.camera, "Camera");
+        // kamera aktif mi bilgisi global'de
+        CAMERA_OK = conn.camera === true;
 
         // summary
         document.getElementById("connSummary").textContent = "local network (demo)";
@@ -325,6 +333,7 @@ async function fetchStatus(){
 function refreshCamera(){
     const camImg = document.getElementById("cameraImg");
     if(!camImg) return;
+    if(!API_KEY || !CAMERA_OK) return;
     camImg.src = `/api/camera/snapshot?token=${encodeURIComponent(API_KEY)}&t=${Date.now()}`;
 }
 
@@ -343,13 +352,18 @@ function bindCommandButtons() {
 
 
 // sayfa ilk acildiginda calisacak kod - init
-document.addEventListener("DOMContentLoaded", () =>{
+document.addEventListener("DOMContentLoaded",  async () =>{
     
+    await loadConfig(); // ilk key alinmali
+
     setSelectedPart(null);
     renderPairingList();
 
     bindUIEvents();
     bindCommandButtons();
+
+
+
 
     fetchStatus();
     setInterval(fetchStatus, 400); // 400ms polling - yenileme
