@@ -9,20 +9,19 @@ Description:
 This module defines the /api/commands endpoint.
 It receives control commands from the web UI (Start, Stop, Reset)
 and updates the system state accordingly.
-
-In later stages, this router will trigger hardware actions via services
-(e.g., Arduino serial communication, robot motion control).
 """
 
 from fastapi import APIRouter
+from fastapi import HTTPException
 from pydantic import BaseModel
 from datetime import datetime
-from fastapi import HTTPException
+
 
 # status router'inin icindeki SYSTEM_STATE'i kullaniyoruz
-from src.app.routers.status import SYSTEM_STATE
+#from src.app.routers.status import SYSTEM_STATE
 
-from src.app.services.plan_runner import plan_runner
+# artik main'de uretiliyor
+#from src.app.services.plan_runner import plan_runner
 
 # API key
 from fastapi import Depends
@@ -36,7 +35,7 @@ router = APIRouter(
 )
 
 
-# Request modeli - gelen JSON sekli ile alakali : hata icin
+# request modeli - gelen JSON sekli ile alakali : hata icin
 class CommandRequest(BaseModel):
     name: str
     payload: dict | None = None
@@ -45,6 +44,7 @@ class CommandRequest(BaseModel):
 # modul ici icin
 def _log(msg: str) -> None:
     """Append a timestamped message to SYSTEM_STATE logs."""
+    from src.app.routers.status import SYSTEM_STATE
     ts = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     SYSTEM_STATE["logs"].append(f"[{ts}] {msg}")
 
@@ -65,6 +65,9 @@ def post_command(cmd: CommandRequest):
         - reset
         - set_test_mode (payload: {"mode": "resistor"|"diode"|"none"})
     """
+    from src.app.routers.status import SYSTEM_STATE
+    from src.app.main import plan_runner
+
     name = cmd.name.strip().lower()
     payload = cmd.payload or {}
 
@@ -73,59 +76,52 @@ def post_command(cmd: CommandRequest):
         # pnp file olmadan sistem calistirilamasin
         plan = SYSTEM_STATE.get("plan", [])
 
-        # demo
-        plan_runner.start()
-        SYSTEM_STATE["robot"]["status"] = "running"
-        SYSTEM_STATE["robot"]["current_task"] = "PlanRunner running"
-
         if not plan:
             raise HTTPException(status_code=400, detail="No plan. Please send plan first.")
 
+        plan_runner.start()
+
         SYSTEM_STATE["robot"]["status"] = "running"
-        SYSTEM_STATE["robot"]["current_task"] = "PNP cycle (demo)"
+        SYSTEM_STATE["robot"]["current_task"] = "PlanRunner running"
         _log("Command received: START")
-        return {"ok": True}
+        return {"ok": True, "message": "Plan started"}
 
     # STOP
-    if name == "stop":
+    elif name == "stop":
 
         # demo
         plan_runner.stop()
-        SYSTEM_STATE["robot"]["status"] = "stopped"
-        SYSTEM_STATE["robot"]["current_task"] = "-"
-
         SYSTEM_STATE["robot"]["status"] = "stopped"
         SYSTEM_STATE["robot"]["current_task"] = "-"
         _log("Command received: STOP")
-        return {"ok": True}
+        return {"ok": True, "message": "Plan stopped"}
 
     # RESET
-    if name == "reset":
+    elif name == "reset":
 
         # demo
-        plan_runner.stop()
+        plan_runner.reset()
+        # plan reseti
         SYSTEM_STATE["plan"] = []
         SYSTEM_STATE["plan_received_at"] = None
-        SYSTEM_STATE["robot"]["status"] = "idle"
-        SYSTEM_STATE["robot"]["current_task"] = "-"
-        SYSTEM_STATE["logs"].append("System reset (plan cleared)")
-
-
+        # robot durumu reseti
         SYSTEM_STATE["robot"]["status"] = "idle"
         SYSTEM_STATE["robot"]["current_task"] = "-"
         SYSTEM_STATE["robot"]["x"] = 0
         SYSTEM_STATE["robot"]["y"] = 0
         SYSTEM_STATE["robot"]["z"] = 0
+
+        SYSTEM_STATE["logs"] = ["System reset"]
         _log("Command received: RESET")
-        return {"ok": True}
+        return {"ok": True, "message": "System reset complete"}
 
     # TEST MODE
-    if name == "set_test_mode":
+    elif name == "set_test_mode":
         mode = str(payload.get("mode", "none")).lower()
         SYSTEM_STATE["teststation"]["mode"] = mode
         _log(f"Command received: SET_TEST_MODE ({mode})")
-        return {"ok": True}
+        return {"ok": True, "message": f"Test mode set to {mode}"}
 
     # Error : bilinmeyen bir komut
     _log(f"Unknown command received: {cmd.name}")
-    return {"ok": False, "error": "Unknown command"}
+    return {"ok": False, "error": "Unknown command: {cmd.name}"}

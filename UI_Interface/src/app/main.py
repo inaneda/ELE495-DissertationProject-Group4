@@ -26,6 +26,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 
+from src.app.core.config import DEMO_MODE
 # router baglama
 from src.app.routers import status
 from src.app.routers import commands
@@ -35,10 +36,15 @@ from src.app.routers import config as config_router
 
 
 # service baglama - tset amacli
-from src.app.services.robot_service import robot_service
-from src.app.services.arduino_service import arduino_service
-from src.app.services.plan_runner import plan_runner
+from src.app.services.robot_service import init_robot_service
+from src.app.services.arduino_service import init_arduino_service
+from src.app.services.plan_runner import init_plan_runner
+from src.app.services.camera_service import init_camera_service
 
+robot_service = None
+arduino_service = None
+camera_service = None
+plan_runner = None
 
 ###
 
@@ -48,16 +54,50 @@ from src.app.services.plan_runner import plan_runner
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # STARTUP
-    robot_service.start()
-    arduino_service.start()
+    global robot_service, arduino_service, camera_service, plan_runner
+    
+    print(f"\n{'='*60}")
+    print(f"SMD Pick&Place Machine Backend Starting")
+    print(f"{'='*60}")
+    print(f"Mode: {'DEMO' if DEMO_MODE else 'REAL'}")
+    print(f"{'='*60}\n")
+    
+    # servisleri initialize etme
+    robot_service = init_robot_service(demo_mode=DEMO_MODE, port="/dev/ttyACM0")
+    arduino_service = init_arduino_service(demo_mode=DEMO_MODE, port="/dev/ttyUSB0")
+    camera_service = init_camera_service(demo_mode=DEMO_MODE, device_index=0)
+    plan_runner = init_plan_runner()
+    
+    # real:
+    if not DEMO_MODE:
+        print("\n[STARTUP] Connecting to hardware...")
+        robot_service.connect()
+        arduino_service.connect()
+        camera_service.open()
+    
+    # polling baslatma
+    print("\n[STARTUP] Starting background services...")
+    robot_service.start_polling()
+    arduino_service.start_polling()
+    
+    print("\n All services started successfully\n")
+    
     yield
+    
     # SHUTDOWN
-    robot_service.stop()
-    arduino_service.stop()
+    print("\n[SHUTDOWN] Stopping services...")
+    robot_service.stop_polling()
+    arduino_service.stop_polling()
     plan_runner.stop()
+    
+    if not DEMO_MODE:
+        robot_service.disconnect()
+        arduino_service.disconnect()
+        camera_service.close()
+    
+    print(" Shutdown complete\n")
 
-
-# web uygulamasi
+# web uygulamasi - fastApi
 app = FastAPI(
     title="SMD Pick&Place Machine API",
     description="Backend API for ELE 495 Disertation Project : SMD Pick and Place Machine",

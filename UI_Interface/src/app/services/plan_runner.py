@@ -6,17 +6,14 @@ Created Date    : 2026-02-05
 Last Modified   : 2026-02-05
 
 Description:
-Demo plan runner that iterates through the received placement plan (pick/place steps).
-It updates SYSTEM_STATE["robot"]["current_task"] and appends logs for each step.
-Later this module will be replaced/extended with real robot motion + pick/place control.
+Plan execution service.
+Executes pick-and-place plan step by step.
 """
 
 import threading
 import time
 from datetime import datetime
 from typing import Optional
-
-from src.app.routers.status import SYSTEM_STATE
 
 
 class PlanRunner:
@@ -25,6 +22,12 @@ class PlanRunner:
         self._thread: Optional[threading.Thread] = None
         self._stop_event = threading.Event()
         self._lock = threading.Lock()
+
+        # start yapildiktan sonra stop yapilip tekrar start yapildiginda kaldigi yerden devam edebilsin
+        self.paused = False     #durdurma
+        self.current_step = 0   #kalinan yeri tutma
+
+        print("[PLAN_RUNNER] Initialized")
 
     def is_running(self) -> bool:
         return self._thread is not None and self._thread.is_alive()
@@ -41,12 +44,25 @@ class PlanRunner:
     def stop(self) -> None:
         """Request stop."""
         self._stop_event.set()
+        self.paused = True
+
+    # reset eklendi
+    def reset(self):
+        """Reset plan execution"""
+        print("[PLAN_RUNNER] Reset requested")
+        self._stop_event.set()
+        self.paused = False
+        self.current_step = 0
 
     def _log(self, msg: str) -> None:
+        # circular import x! lazy import
+        from src.app.routers.status import SYSTEM_STATE
         ts = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         SYSTEM_STATE["logs"].append(f"[{ts}] {msg}")
 
     def _loop(self) -> None:
+        from src.app.routers.status import SYSTEM_STATE
+
         plan = SYSTEM_STATE.get("plan", [])
         if not plan:
             self._log("PlanRunner: no plan to run.")
@@ -57,12 +73,13 @@ class PlanRunner:
         SYSTEM_STATE["robot"]["status"] = "running"
         self._log(f"PlanRunner started. Steps: {len(plan)}")
 
-        # Step-by-step demo execution
+        # step-by-step
         for i, step in enumerate(plan, start=1):
             if self._stop_event.is_set():
                 self._log("PlanRunner stopped by user.")
                 SYSTEM_STATE["robot"]["status"] = "stopped"
                 SYSTEM_STATE["robot"]["current_task"] = "-"
+                self.current_step = i - 1  # resume mantigi, kaldigi yerden devam edebilmesi icin
                 return
 
             part = str(step.get("part", "")).upper()
@@ -84,8 +101,15 @@ class PlanRunner:
 
         SYSTEM_STATE["robot"]["status"] = "idle"
         SYSTEM_STATE["robot"]["current_task"] = "done"
+        self.current_step = 0
+        self.paused = False
         self._log("PlanRunner finished.")
 
 
-# single instance
-plan_runner = PlanRunner()
+plan_runner = None
+
+def init_plan_runner():
+    """Initialize plan runner singleton"""
+    global plan_runner
+    plan_runner = PlanRunner()
+    return plan_runner

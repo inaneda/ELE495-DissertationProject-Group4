@@ -36,6 +36,7 @@ SYSTEM_STATE = {
         "y": 0,
         "z": 0
     },
+
     "teststation": {
         "mode": "none",
         "last_adc": None,
@@ -43,14 +44,41 @@ SYSTEM_STATE = {
         "last_result": None,
         "last_updated": None
     },
+
     "logs": [
         "Backend started (demo mode)"
     ],
-    "connections": {
-        "arduino": False,
-        "camera": False
+
+    "image_processing": {
+        "last_detection": {
+            "component": None,
+            "type": None,
+            "confidence": 0.0
+        },
+        "last_placement": {
+            "pad": None,
+            "accuracy": 0.0,
+            "status": "unknown"
+        }
     },
+
+    "connections": {
+        "arduino_motors": {
+           "status": False,
+            "port": None
+        },
+        "arduino_teststation": {
+            "status": False,
+            "port": None
+        },
+        "camera": {
+        "status": False,
+        "port": None
+        }
+    },
+    
     "plan": [],
+
     "plan_received_at": None
 }
 
