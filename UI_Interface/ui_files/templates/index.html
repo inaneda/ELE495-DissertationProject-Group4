@@ -126,7 +126,7 @@ and is styled using Bootstrap and custom CSS.
                         <button class="select-btn pick-btn" data-pick="d2">D2</button>
                         <button class="select-btn pick-btn" data-pick="r1">R1</button>
                         <button class="select-btn pick-btn" data-pick="r2">R2</button>
-                        <div class="small text-muted mt-2">SELECTED: <b id="selectedPart">-</b></div>
+                        <div class="small text-muted mt-2">SELECTED: <b id="selectedPart">-</b></div>   
                     </div>
                     <!-- sag PCB padleri - a, b, c, d -->
                     <div class="pcb">
@@ -200,7 +200,10 @@ and is styled using Bootstrap and custom CSS.
                 <button type="button" class="cmd-btn cmd-stop" id="btnStop">STOP</button>
                 <button type="button" class="cmd-btn cmd-reset" id="btnReset">RESET</button>
                 <button type="button" class="cmd-btn cmd-plan" id="btnSendPlan">SEND PLAN</button>
-
+                
+                <button type="button" class="cmd-btn cmd-undo" onclick="undoLastPairing()">UNDO</button>
+                <button type="button" class="cmd-btn cmd-clear" onclick="resetPairingUI()">CLEAR</button>
+                
                 <div class="small text-muted text-center" id="planInfo">PLAN: -</div>
 
             </div>

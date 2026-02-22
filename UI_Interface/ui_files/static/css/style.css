@@ -148,6 +148,8 @@ and academic-project-appropriate user interface.
 .cmd-start{ background: #b5ebb6; }
 .cmd-stop{ background: #f1afaf; }
 .cmd-reset{ background: #b6d1ff; }
+.cmd-undo  { background: #ffd28a; }
+.cmd-clear { background: #ff8f8f; }
 /* emergency stop olsun mu?
 .cmd-estop{
   background: #ff4d4d;

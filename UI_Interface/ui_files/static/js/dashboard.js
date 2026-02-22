@@ -31,9 +31,12 @@ const assignments = {};
 
 // ekranda “Pick Order - Place Order” olarak gostermek icin tiklama sirasi
 // [{ part:"d1", padName:"konum-a", padLabel:"a" }, ...]
-const pairingOrder = [];
-
+const pairings = [];
+// NOTE: pairingOrder is the single source of truth used by the UI logic
+const pairingOrder = pairings;
 let CAMERA_OK = false;
+
+
 
 
 // DOM - HTML yardimcilari
@@ -194,21 +197,34 @@ async function sendCmd(name, payload=null){
     try{
         const res = await apiFetch("/api/commands/",{
             method: "POST",
-            body: JSON.stringify({name, payload})
+            headers: {
+                'Content-Type': 'application/json',
+                'X-API-Key': API_KEY
+            },
+            body: JSON.stringify({ name, payload })
         });
-        
+
         if(!res.ok){
             const txt = await res.text();
-            alert(`Command failed: ${name}\n` + txt);
+            console.error("Command failed:", name, txt);
+            alert(`Command failed: ${name}
+${txt}`);
             return;
         }
-    
-    }catch(e){
-        console.warn("Command error:", e);
+
+        const data = await res.json();
+
+        if (name === 'reset') {
+            // Backend reset succeeded -> clear UI pairing state too
+            resetPairingUI();
+        }
+
+        console.log(`Command ${name} sent:`, data);
+
+    }catch(error){
+        console.error('Command error:', error);
         alert("Command error. Check console.");
-        return;
     }
-    await fetchStatus(); // komuttan sonra yenile
 }
 
 
@@ -297,10 +313,23 @@ async function fetchStatus(){
         // baglanti durumu
         setBadge("badgePi", true, "Pi");
         const conn = data.connections || {};
-        setBadge("badgeArduino", conn.arduino, "Arduino");
-        setBadge("badgeCamera", conn.camera, "Camera");
-        // kamera aktif mi bilgisi global'de
-        CAMERA_OK = conn.camera === true;
+        
+        // yeni connection yapisi (object icinde status var)
+        const cam = conn.camera || {};
+
+        // badge guncelle
+        setBadge("badgeCamera", cam.status, "Camera");
+
+        // global kamera bilgisi
+        CAMERA_OK = cam.status === true;
+
+        // kamera placeholder kontrolu
+        const camOk = cam.status === true;
+
+        const anyArduinoOk =
+        (conn.arduino_motors?.status === true) ||
+            (conn.arduino_teststation?.status === true);
+        setBadge("badgeArduino", anyArduinoOk, "Arduino");
 
         // summary
         document.getElementById("connSummary").textContent = "local network (demo)";
@@ -309,7 +338,7 @@ async function fetchStatus(){
         const camImg = document.getElementById("cameraImg");
         const camPh = document.getElementById("cameraPlaceholder");
         
-        const camOk = data.connections?.camera === true;
+    
         if (camImg && camPh){
             if(camOk){
                 camImg.style.display = "block";
@@ -372,3 +401,49 @@ document.addEventListener("DOMContentLoaded",  async () =>{
     setInterval(refreshCamera, 1000); // 1 FPS
     refreshCamera();
 });
+
+
+// reset ve undo butonu
+function resetPairingUI() {
+    setSelectedPart(null);
+
+    pairingOrder.length = 0;
+    for(const k of Object.keys(assignments)) delete assignments[k];
+
+    document.querySelectorAll('.place-btn').forEach(btn => {
+        const originalLabel = btn.getAttribute('data-place'); // "a", "b", "c", "d"
+        btn.textContent = originalLabel;
+        btn.classList.remove('assigned');
+        btn.disabled = false; // tekrar tiklanabilir
+    });
+
+    renderPairingList();
+
+    // selected kismini temizleme (setSelectedPart zaten yapar)
+    console.log('[RESET] Pairing UI cleared');
+}
+
+function undoLastPairing() {
+    if (pairingOrder.length === 0) {
+        alert("No pairing to undo!");
+        return;
+    }
+
+    const lastPair = pairingOrder.pop();
+
+    if(lastPair && lastPair.padName){
+        delete assignments[lastPair.padName];
+
+        // padleri resetleme
+        const placeBtn = document.querySelector(`.place-btn[data-pad="${lastPair.padName}"]`);
+        if (placeBtn) {
+            const originalLabel = placeBtn.getAttribute('data-place');
+            placeBtn.textContent = originalLabel;
+            placeBtn.classList.remove('assigned');
+            placeBtn.disabled = false;
+        }
+    }
+
+    renderPairingList();
+    console.log('[UNDO] Last pairing removed:', lastPair);
+}

@@ -47,7 +47,7 @@ class PlanRunner:
         self.paused = True
 
     # reset eklendi
-    def reset(self):
+    def reset(self) -> None:
         """Reset plan execution"""
         print("[PLAN_RUNNER] Reset requested")
         self._stop_event.set()
@@ -68,37 +68,51 @@ class PlanRunner:
             self._log("PlanRunner: no plan to run.")
             SYSTEM_STATE["robot"]["status"] = "idle"
             SYSTEM_STATE["robot"]["current_task"] = "-"
+            self.current_step = 0
+            self.paused = False
             return
-
+        
+        start_index = self.current_step if self.paused else 0
+        total = len(plan)
+        self._log(f"PlanRunner started. Steps: {total} (from step {start_index + 1})")
         SYSTEM_STATE["robot"]["status"] = "running"
-        self._log(f"PlanRunner started. Steps: {len(plan)}")
 
         # step-by-step
-        for i, step in enumerate(plan, start=1):
+        for i in range(start_index, total):
+            step = plan[i]
+
             if self._stop_event.is_set():
                 self._log("PlanRunner stopped by user.")
                 SYSTEM_STATE["robot"]["status"] = "stopped"
                 SYSTEM_STATE["robot"]["current_task"] = "-"
-                self.current_step = i - 1  # resume mantigi, kaldigi yerden devam edebilmesi icin
+                self.current_step = i # resume mantigi, kaldigi yerden devam edebilmesi icin
+                self.paused = True
                 return
 
             part = str(step.get("part", "")).upper()
             pad = str(step.get("padLabel", step.get("padName", ""))).upper()
-
-            SYSTEM_STATE["robot"]["current_task"] = f"Step {i}/{len(plan)}: PICK {part}"
-            self._log(f"Step {i}: PICK {part}")
+            step_no = i + 1
+   
+            # PICK
+            SYSTEM_STATE["robot"]["current_task"] = f"Step {step_no}/{total}: PICK {part}"
+            self._log(f"Step {step_no}: PICK {part}")
             time.sleep(self.step_delay_s)
 
+            # STOP tekrar kontrol
             if self._stop_event.is_set():
                 self._log("PlanRunner stopped by user.")
                 SYSTEM_STATE["robot"]["status"] = "stopped"
                 SYSTEM_STATE["robot"]["current_task"] = "-"
+                self.current_step = i
+                self.paused = True
                 return
 
-            SYSTEM_STATE["robot"]["current_task"] = f"Step {i}/{len(plan)}: PLACE {part} -> {pad}"
-            self._log(f"Step {i}: PLACE {part} -> {pad}")
+            # PLACE
+            SYSTEM_STATE["robot"]["current_task"] = f"Step {step_no}/{total}: PLACE {part} -> {pad}"
+            self._log(f"Step {step_no}: PLACE {part} -> {pad}")
             time.sleep(self.step_delay_s)
 
+        # plan bitince
         SYSTEM_STATE["robot"]["status"] = "idle"
         SYSTEM_STATE["robot"]["current_task"] = "done"
         self.current_step = 0
