@@ -257,16 +257,19 @@ async function sendPlan(){
 
 
 // baglanti durumu icin
-function setBadge(id, ok, label){
+// port bilgisini ekleme
+function setBadge(id, ok, label, port=null){
     const el = document.getElementById(id);
     if(!el) return;
 
+    const portTxt = port ? ` (${port})` : "";
+
     if(ok === true){
         el.className = "badge text-bg-success";
-        el.textContent = `${label}: OK`;
+        el.textContent = `${label}: OK${portTxt}`;
     }else if(ok === false){
         el.className = "badge text-bg-danger";
-        el.textContent = `${label}: NO`;
+        el.textContent = `${label}: NO${portTxt}`;
     }else{
         el.className = "badge text-bg-secondary";
         el.textContent = `${label}: ?`;
@@ -289,7 +292,7 @@ async function fetchStatus(){
         setText("planInfo", `PLAN: LOADED (${planCount})  ${planTs ?? ""}`.trim());
         } else {
         setText("planInfo", "PLAN: EMPTY");
-}
+        }
 
         // robot
         setText("robotStatus", data.robot?.status ?? "-");
@@ -319,34 +322,34 @@ async function fetchStatus(){
         const historyBox = document.getElementById("historyBox");
         if (historyBox) historyBox.textContent = logs.join("\n");
 
+
         // baglanti durumu
         setBadge("badgePi", true, "Pi");
         const conn = data.connections || {};
-        
+
+        // motors arduino
+        const m = conn.arduino_motors || {};
+        setBadge("badgeArduinoMotors", m.status, "Arduino Motors", m.port);
+        // teststation arduino
+        const t = conn.arduino_teststation || {};
+        setBadge("badgeArduinoTest", t.status, "Arduino Test", t.port);
+
         // yeni connection yapisi (object icinde status var)
         const cam = conn.camera || {};
-
         // badge guncelle
-        setBadge("badgeCamera", cam.status, "Camera");
+        setBadge("badgeCamera", cam.status, "Camera", cam.port);
 
         // global kamera bilgisi
         CAMERA_OK = cam.status === true;
-
         // kamera placeholder kontrolu
         const camOk = cam.status === true;
-
-        const anyArduinoOk =
-        (conn.arduino_motors?.status === true) ||
-            (conn.arduino_teststation?.status === true);
-        setBadge("badgeArduino", anyArduinoOk, "Arduino");
-
-        // summary
-        document.getElementById("connSummary").textContent = "local network (demo)";
 
         // kamera placeholder : suan JPEG kullaniyoruz sonra MJPEG'e gecebiliriz
         const camImg = document.getElementById("cameraImg");
         const camPh = document.getElementById("cameraPlaceholder");
         
+         // summary
+        document.getElementById("connSummary").textContent = "local network (demo)";
     
         if (camImg && camPh){
             if(camOk){
@@ -361,7 +364,8 @@ async function fetchStatus(){
     }catch(e){
         console.warn("Status fetch error:", e);
         setBadge("badgePi", false, "Pi");
-        setBadge("badgeArduino", null, "Arduino");
+        setBadge("badgeArduinoMotors", null, "Arduino Motors");
+        setBadge("badgeArduinoTest", null, "Arduino Test");
         setBadge("badgeCamera", null, "Camera");
         document.getElementById("connSummary").textContent = "no connection";
     }

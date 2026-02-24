@@ -223,6 +223,14 @@ class RobotService:
         from src.app.routers.status import SYSTEM_STATE 
         # onceden bastaydi circular import olmasin diye buraya tasidik
         
+        # arduino - nema17 (GRBL) baglanti durumu
+        if self.demo_mode:
+            SYSTEM_STATE["connections"]["arduino_motors"]["status"] = True
+            SYSTEM_STATE["connections"]["arduino_motors"]["port"] = self.port  # demo'da port string dursun
+        else:
+            SYSTEM_STATE["connections"]["arduino_motors"]["status"] = self.ser is not None
+            SYSTEM_STATE["connections"]["arduino_motors"]["port"] = self.port if self.ser is not None else None
+
         direction = 1  # demo icin
         
         while not self._stop_event.is_set():
@@ -281,7 +289,8 @@ class RobotService:
                 }
             
             time.sleep(self.interval_s)
-
+            
+        SYSTEM_STATE["connections"]["arduino_motors"]["status"] = False
 
 
 robot_service = None
