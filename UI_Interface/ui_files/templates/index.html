@@ -199,6 +199,31 @@ and is styled using Bootstrap and custom CSS.
                         CAMERA VIEW
                     </div>
                 </div>
+
+                <!-- image processing -->
+                <div class="mini-card mt-2">
+                    <div class="mini-label">VISION RESULTS</div>
+
+                    <div class="status-line">
+                        <span class="status-label">Detection:</span>
+                        <b id="visionComponent">-</b>
+                        (<span id="visionType">-</span>)
+                        Conf: <span id="visionConf">-</span>
+                    </div>
+
+                    <div class="status-line">
+                        <span class="status-label">Placement:</span>
+                        Pad <b id="placePad">-</b>,
+                        Acc: <span id="placeAcc">-</span>,
+                        Status: <span id="placeStatus">-</span>
+                    </div>
+
+                    <div class="status-line">
+                        <span class="status-label">Updated:</span>
+                        <span id="visionUpdated">-</span>
+                    </div>
+                </div>
+                
             </div>
         </section>
 

@@ -382,3 +382,18 @@ and academic-project-appropriate user interface.
   line-height: 1.2;
   opacity: 0.9;
 }
+
+/* goruntu isleme kartinin gorulebilmesi icin */
+
+#panel-camera .panel-body{
+  max-height: 520px;
+  overflow-y: auto; /* asagi kaydirma */
+}
+
+/* veya bu duruma gore bak !!!!
+#panel-camera .panel-body{
+  height: auto !important;
+  max-height: none !important;
+  overflow: visible !important;
+}
+*/

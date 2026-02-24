@@ -271,6 +271,19 @@ class RobotService:
                     "last_line": "G0 X... Y... (demo)",
                     "last_updated": time.strftime("%Y-%m-%dT%H:%M:%S"),
                 }
+                # demo icin simulasyon
+                if robot.get("status") == "running":
+                    SYSTEM_STATE["image_processing"] = {
+                        "last_detection": {"component": "R1", "type": "resistor", "confidence": 0.92},
+                        "last_placement": {"pad": "B", "accuracy": 87.5, "status": "OK"},
+                        "last_updated": time.strftime("%Y-%m-%dT%H:%M:%S")
+                    }
+                else:
+                    SYSTEM_STATE["image_processing"] = {
+                        "last_detection": {"component": None, "type": None, "confidence": None},
+                        "last_placement": {"pad": None, "accuracy": None, "status": None},
+                        "last_updated": time.strftime("%Y-%m-%dT%H:%M:%S")
+                    }
 
             else:
                 # real: grbl bilgisi
@@ -289,7 +302,7 @@ class RobotService:
                 }
             
             time.sleep(self.interval_s)
-            
+
         SYSTEM_STATE["connections"]["arduino_motors"]["status"] = False
 
 

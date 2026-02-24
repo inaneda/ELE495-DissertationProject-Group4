@@ -294,6 +294,7 @@ async function fetchStatus(){
         setText("planInfo", "PLAN: EMPTY");
         }
 
+
         // robot
         setText("robotStatus", data.robot?.status ?? "-");
         setText("robotTask", data.robot?.current_task ?? "-");
@@ -310,12 +311,35 @@ async function fetchStatus(){
         setText("grblZ", mpos.z ?? "-");
         setText("grblOk", (grbl.last_ok === true) ? "OK" : (grbl.last_ok === false ? "NO" : "-"));
 
+
         // test
         setText("testMode", data.teststation?.mode ?? "-");
         setText("testAdc", data.teststation?.last_adc ?? "-");
         setText("testV", data.teststation?.last_voltage_v ?? "-");
         setText("testResult", data.teststation?.last_result ?? "-");
         setText("testUpdated", data.teststation?.last_updated ?? "-");
+
+
+        // image processing
+        const ip = data.image_processing || {};
+        const det = ip.last_detection || {};
+        const plc = ip.last_placement || {};
+
+        setText("visionComponent", det.component ?? "-");
+        setText("visionType", det.type ?? "-");
+        setText(
+        "visionConf",
+        (typeof det.confidence === "number") ? `${(det.confidence * 100).toFixed(1)}%` : "-"
+        );
+
+        setText("placePad", plc.pad ?? "-");
+        setText(
+        "placeAcc",
+        (typeof plc.accuracy === "number") ? `${plc.accuracy.toFixed(1)}%` : "-"
+        );
+        setText("placeStatus", plc.status ?? "-");
+        setText("visionUpdated", ip.last_updated ?? "-");
+
 
         // logs -> gorev gecmisi
         const logs = data.logs || [];
@@ -347,7 +371,7 @@ async function fetchStatus(){
         // kamera placeholder : suan JPEG kullaniyoruz sonra MJPEG'e gecebiliriz
         const camImg = document.getElementById("cameraImg");
         const camPh = document.getElementById("cameraPlaceholder");
-        
+
          // summary
         document.getElementById("connSummary").textContent = "local network (demo)";
     

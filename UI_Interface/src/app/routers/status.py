@@ -59,15 +59,16 @@ SYSTEM_STATE = {
 
     "image_processing": {
         "last_detection": {
-            "component": None,
-            "type": None,
-            "confidence": 0.0
+            "component": None,      # R1, R2, D1, D2
+            "type": None,           # R, D
+            "confidence": 0.0       # 0 - 1
         },
-        "last_placement": {
-            "pad": None,
-            "accuracy": 0.0,
+        "last_placement": {         # yerlestirme dogrulaması
+            "pad": None,            # a, b, c, d
+            "accuracy": 0.0,        # dogruluk 0 -100
             "status": "unknown"
-        }
+        },
+        "last_updated": None
     },
 
     "connections": {
