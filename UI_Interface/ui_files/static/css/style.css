@@ -118,7 +118,10 @@ and academic-project-appropriate user interface.
 
 
 /* robotun durumu icin */
-.status-line{ margin-bottom: 40px; }
+.status-line{ 
+  margin-bottom: 20px; 
+  line-height: 1.2;
+}
 .status-label{ font-weight: 700; }
 
 

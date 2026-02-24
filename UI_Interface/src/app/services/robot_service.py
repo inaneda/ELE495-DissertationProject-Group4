@@ -26,15 +26,34 @@ class RobotService:
         self.interval_s = 0.2 # 200ms polling
         self._thread: threading.Thread | None = None
         self._stop_event = threading.Event()
+
         # grbl - sadece real mode'da
         self.ser = None
 
-        # ilk konum - grbl ile guncellenecek veya simulasyon ile
+        # ilk konum - grbl ile guncellenecek veya simulasyon ile - real+demo
         self.position = {"x": 0.0, "y": 0.0, "z": 0.0}
         self.status = "idle"  # idle, running, alarm
 
         print(f"[ROBOT] Initialized in {'DEMO' if demo_mode else 'REAL'} mode")
 
+    def _safe_readline(self) -> str:
+        """Read a line safely from serial (REAL mode)."""
+        if not self.ser:
+            return ""
+        try:
+            return self.ser.readline().decode("utf-8", errors="ignore").strip()
+        except Exception:
+            return ""
+
+    def _drain_input(self, max_lines: int = 20) -> None:
+        """Drain some pending lines to clear buffer (REAL mode)."""
+        if not self.ser:
+            return
+        for _ in range(max_lines):
+            line = self._safe_readline()
+            if not line:
+                break
+    
     def connect(self) -> bool:
         """Connect to GRBL (REAL mode only)"""
         if self.demo_mode:
@@ -47,27 +66,41 @@ class RobotService:
             time.sleep(2)  # grbl startup time
             
             # grbl'in karsilama mesajini okuma
-            welcome = self.ser.readline().decode('utf-8').strip()
-            print(f"[ROBOT] Connected to GRBL: {welcome}")
+            startup_lines = []
+            for _ in range(5):
+                line = self._safe_readline()
+                if line:
+                    startup_lines.append(line)
+            if startup_lines:
+                print("[ROBOT] GRBL startup:", " | ".join(startup_lines))
             
             # soft reset
             self.ser.write(b'\x18')  # Ctrl+X
             time.sleep(1)
             
+            self._drain_input()
             self.status = "idle"
+            print(f"[ROBOT] Connected to GRBL on {self.port} @ {self.baudrate}")
             return True
             
         except Exception as e:
             print(f"[ROBOT] Connection failed: {e}")
+            self.ser = None
+            self.status = "disconnected"
             return False
     
-    def disconnect(self):
+    def disconnect(self) -> None:
         """Disconnect from GRBL"""
         if self.ser:
-            self.ser.close()
+            try:
+                self.ser.close()
+            except Exception:
+                pass
             self.ser = None
-            print("[ROBOT] Disconnected from GRBL")
-    
+        self.status = "disconnected"
+        print("[ROBOT] Disconnected from GRBL")
+
+    # g-code gonderme
     def send_gcode(self, gcode: str) -> bool:
         """
         Send G-code command to GRBL (REAL mode) or simulate (DEMO mode)
@@ -75,28 +108,41 @@ class RobotService:
         if self.demo_mode:
             # demo:
             print(f"[ROBOT DEMO] G-code: {gcode}")
-            time.sleep(0.1)
+            time.sleep(0.05)
             return True
         
         if not self.ser:
             print("[ROBOT] Not connected to GRBL")
+            self.status = "disconnected"
             return False
         
         try:
-            self.ser.write(f"{gcode}\n".encode('utf-8'))
+            self.ser.write((gcode.strip() + "\n").encode("utf-8"))
             
             # grbl'den "ok" bilgisini bekleme
-            response = self.ser.readline().decode('utf-8').strip()
-            
-            if response.startswith("ok"):
-                print(f"[ROBOT] G-code sent: {gcode}")
-                return True
-            else:
-                print(f"[ROBOT] Error: {response}")
-                return False
+            deadline = time.time() + 1.5
+            while time.time() < deadline:
+                line = self._safe_readline()
+                if not line:
+                    continue
+
+                # basarili
+                if line.lower().startswith("ok"):
+                    print(f"[ROBOT] G-code ok: {gcode}")
+                    return True
+
+                # hatali: format: "error:xx"
+                if line.lower().startswith("error") or "alarm" in line.lower():
+                    print(f"[ROBOT] G-code error for '{gcode}': {line}")
+                    self.status = "alarm"
+                    return False
                 
+            print(f"[ROBOT] Timeout waiting ok for: {gcode}")
+            return False    
+        
         except Exception as e:
             print(f"[ROBOT] Send error: {e}")
+            self.status = "error"
             return False
     
     def query_status(self) -> Dict[str, Any]: 
@@ -118,17 +164,20 @@ class RobotService:
             self.ser.write(b'?\n')
             
             # grbl yaniti formati: <Idle|MPos:...,...,...|FS:...>
-            response = self.ser.readline().decode('utf-8').strip()
-            
-            if response.startswith('<'):
-                return self._parse_grbl_status(response)
-            else:
-                return {"status": "unknown", "x": 0, "y": 0, "z": 0}
+            # <...> bu bicimi gorene kadar okuma yapilmali
+            for _ in range(8):
+                line = self._safe_readline()
+                if not line:
+                    continue
+                if line.startswith("<"):
+                    return self._parse_grbl_status(line)
+            return {"status": "unknown", "x": 0.0, "y": 0.0, "z": 0.0}
         
         except Exception as e:
             print(f"[ROBOT] Query error: {e}")
             return {"status": "error", "x": 0, "y": 0, "z": 0}
     
+
     # grbl bilgisi (text biciminde) -> arayuz icin anlamli olabilmesi icin JSON olmali
     def _parse_grbl_status(self, line: str) -> Dict[str, Any]:
         """
@@ -151,7 +200,8 @@ class RobotService:
         
         return result
     
-    def start_polling(self):
+    # polling
+    def start_polling(self) -> None:
         """Start background status polling"""
         if self._thread and self._thread.is_alive():
             return
@@ -161,14 +211,14 @@ class RobotService:
         self._thread.start()
         print("[ROBOT] Polling started")
 
-    def stop_polling(self):
+    def stop_polling(self) -> None:
         """Stop background polling"""
         self._stop_event.set()
         if self._thread:
             self._thread.join(timeout=2)
         print("[ROBOT] Polling stopped")
 
-    def _polling_loop(self):
+    def _polling_loop(self) -> None:
         """Background loop for status polling"""
         from src.app.routers.status import SYSTEM_STATE 
         # onceden bastaydi circular import olmasin diye buraya tasidik
@@ -190,7 +240,6 @@ class RobotService:
                     elif self.position["x"] <= 0:
                         direction = 1
 
-
                     if self.position["y"] >= 200:
                         self.position["y"] = 0
                     
@@ -198,12 +247,38 @@ class RobotService:
                     robot["y"] = int(self.position["y"])
                     robot["z"] = int(self.position.get("z", 0))
                     robot["status"] = "running"
+                    self.status = "running"
                 else:
                     robot["status"] = robot.get("status", "idle")
+                    self.status = robot["status"]
+
+                SYSTEM_STATE["grbl"] = {
+                    "state": robot.get("status", "idle"),
+                    "mpos": {
+                        "x": float(robot.get("x", 0)),
+                        "y": float(robot.get("y", 0)),
+                        "z": float(robot.get("z", 0)),
+                    },
+                    "last_ok": True,
+                    "last_line": "G0 X... Y... (demo)",
+                    "last_updated": time.strftime("%Y-%m-%dT%H:%M:%S"),
+                }
+
             else:
                 # real: grbl bilgisi
                 data = self.query_status()
                 SYSTEM_STATE["robot"].update(data)
+                SYSTEM_STATE["grbl"] = {
+                    "state": SYSTEM_STATE["robot"].get("status", "unknown"),
+                    "mpos": {
+                        "x": float(SYSTEM_STATE["robot"].get("x", 0)),
+                        "y": float(SYSTEM_STATE["robot"].get("y", 0)),
+                        "z": float(SYSTEM_STATE["robot"].get("z", 0))
+                    },
+                    "last_ok": None,    # ok veya err
+                    "last_line": None,  # son gcode
+                    "last_updated": time.strftime("%Y-%m-%dT%H:%M:%S")
+                }
             
             time.sleep(self.interval_s)
 

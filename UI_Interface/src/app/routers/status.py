@@ -37,6 +37,14 @@ SYSTEM_STATE = {
         "z": 0
     },
 
+    "grbl": {
+        "state": "idle",                 # Idle/Run/Hold/Alarm
+        "mpos": {"x": 0.0, "y": 0.0, "z": 0.0},
+        "last_ok": None,                 # True/False/None
+        "last_line": None,               # son gcode satırı - demo
+        "last_updated": None             # ISO string
+    },
+
     "teststation": {
         "mode": "none",
         "last_adc": None,

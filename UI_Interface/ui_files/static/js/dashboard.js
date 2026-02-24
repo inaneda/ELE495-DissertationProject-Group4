@@ -298,6 +298,15 @@ async function fetchStatus(){
         setText("posY", data.robot?.y ?? "-");
         setText("posZ", data.robot?.z ?? "-");
 
+        // robot - grbl
+        const grbl = data.grbl || {};
+        setText("grblState", grbl.state ?? "-");
+        const mpos = grbl.mpos || {};
+        setText("grblX", mpos.x ?? "-");
+        setText("grblY", mpos.y ?? "-");
+        setText("grblZ", mpos.z ?? "-");
+        setText("grblOk", (grbl.last_ok === true) ? "OK" : (grbl.last_ok === false ? "NO" : "-"));
+
         // test
         setText("testMode", data.teststation?.mode ?? "-");
         setText("testAdc", data.teststation?.last_adc ?? "-");
