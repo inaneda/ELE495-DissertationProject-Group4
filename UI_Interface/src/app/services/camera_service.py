@@ -15,6 +15,7 @@ Camera service with DEMO and REAL modes.
 """
 
 import cv2
+import platform
 
 class CameraService:
     def __init__(self, demo_mode: bool = True, device_index: int = 0):
@@ -25,31 +26,43 @@ class CameraService:
 
     def open(self) -> bool:
         """Open the camera device."""
-        if self.cap is not None:
+        if getattr(self, "cap", None) is not None:
             return True
+
+        import cv2
+        import platform
         
-        # demo:
-        if self.demo_mode:
-            cap = cv2.VideoCapture(self.device_index, cv2.CAP_DSHOW)
-        else:
-            # real: raspberry pi camera (picamera2 ???)
-            cap = cv2.VideoCapture(self.device_index)
-        
-        if not cap.isOpened():
-            print(f"[CAMERA] Failed to open camera at index {self.device_index}")
+        try:
+            if platform.system() == "Windows":
+                cap = cv2.VideoCapture(self.device_index, cv2.CAP_DSHOW)
+            else:
+                cap = cv2.VideoCapture(self.device_index)
+
+            if not cap or not cap.isOpened():
+                try:
+                    if cap:
+                        cap.release()
+                except Exception:
+                    pass
+                self.cap = None
+                return False
+
+            self.cap = cap
+            return True
+
+        except Exception:
+            self.cap = None
             return False
-        
-        self.cap = cap
-        print(f"[CAMERA] Camera opened successfully at index {self.device_index}")
-        return True
     
 
-    def close(self) -> None:
-        """Release camera device."""
-        if self.cap is not None:
-            self.cap.release()
+    def close(self):
+        cap = getattr(self, "cap", None)
+        if cap is not None:
+            try:
+                cap.release()
+            except Exception:
+                pass
             self.cap = None
-            print("[CAMERA] Camera closed")
 
 
     def get_jpeg(self) -> bytes | None:

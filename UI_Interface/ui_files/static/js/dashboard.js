@@ -403,12 +403,32 @@ function refreshCamera(){
     camImg.src = `/api/camera/snapshot?token=${encodeURIComponent(API_KEY)}&t=${Date.now()}`;
 }
 
+// acilmadiginda baglantiyi yeniden almaya calisma
+async function restartCamera(){
+  try{
+    const res = await apiFetch("/api/camera/restart", { method: "POST" });
+    if (!res.ok){
+      const txt = await res.text();
+      alert("Camera restart failed: " + txt);
+      return;
+    }
+    await fetchStatus();     // CAMERA_OK guncelle
+    refreshCamera();         // yeni snapshot iste
+  }catch(e){
+    console.error("Camera restart error:", e);
+    alert("Camera restart error. Check console.");
+  }
+}
+
 // start-stop-reset butonlari + send plan butonu
 function bindCommandButtons() {
     const startBtn = document.getElementById("btnStart");
     const stopBtn = document.getElementById("btnStop");
     const resetBtn = document.getElementById("btnReset");
     const sendPlanBtn = document.getElementById("btnSendPlan");
+
+    const camReloadBtn = document.getElementById("btnCamReload");
+    if (camReloadBtn) camReloadBtn.addEventListener("click", restartCamera);
 
     if (startBtn) startBtn.addEventListener("click", () => sendCmd("start"));
     if (stopBtn) stopBtn.addEventListener("click", () => sendCmd("stop"));
