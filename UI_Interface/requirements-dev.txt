@@ -6,8 +6,8 @@ uvicorn[standard]
 pyserial
 
 # camera - image handling
-# opencv-python
-opencv-python-headless
+opencv-python
+# opencv-python-headless
 numpy
 
 # data handling & logging
