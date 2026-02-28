@@ -31,4 +31,4 @@ TESTSTATION_PORT: str = os.environ.get("PNP_TESTSTATION_PORT", "/dev/ttyUSB0")
 
 # baudrates sonra bak!!
 ROBOT_BAUDRATE: int = int(os.environ.get("PNP_ROBOT_BAUD", "115200"))
-TESTSTATION_BAUDRATE: int = int(os.environ.get("PNP_TESTSTATION_BAUD", "9600"))
+TESTSTATION_BAUDRATE: int = int(os.environ.get("PNP_TESTSTATION_BAUD", "115200"))

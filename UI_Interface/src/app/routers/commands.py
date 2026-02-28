@@ -117,10 +117,26 @@ def post_command(cmd: CommandRequest):
 
     # TEST MODE
     elif name == "set_test_mode":
+        payload = payload or {}
         mode = str(payload.get("mode", "none")).lower()
         SYSTEM_STATE["teststation"]["mode"] = mode
         _log(f"Command received: SET_TEST_MODE ({mode})")
         return {"ok": True, "message": f"Test mode set to {mode}"}
+    
+    elif name == "test_measure":
+        from src.app.main import arduino_service
+        if arduino_service is None:
+            raise HTTPException(status_code=500, detail="Arduino service not initialized")
+
+        data = arduino_service.measure()
+        SYSTEM_STATE["teststation"]["mode"] = data.get("mode", "none")
+        SYSTEM_STATE["teststation"]["last_adc"] = data.get("value_text", "-")   # eskiden adc'ydi artik VALUE TEXT
+        SYSTEM_STATE["teststation"]["last_voltage_v"] = data.get("voltage", 0.0)
+        SYSTEM_STATE["teststation"]["last_result"] = data.get("result", "UNKNOWN")
+        SYSTEM_STATE["teststation"]["last_updated"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+        _log("Command received: TEST_MEASURE")
+        return {"ok": True, "data": data}
 
     # Error : bilinmeyen bir komut
     _log(f"Unknown command received: {cmd.name}")

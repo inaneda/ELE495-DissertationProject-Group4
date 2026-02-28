@@ -178,10 +178,11 @@ class PlanRunner:
                 return
 
             # --- arduino'dan olcum alma
-            data = arduino_service.read_adc() if arduino_service is not None else {"result": "NO_SERVICE"}
-            SYSTEM_STATE["teststation"]["last_adc"] = data.get("adc")
-            SYSTEM_STATE["teststation"]["last_voltage_v"] = data.get("voltage")
-            SYSTEM_STATE["teststation"]["last_result"] = data.get("result")
+            data = arduino_service.measure() if arduino_service is not None else {"result": "NO_SERVICE"}
+            SYSTEM_STATE["teststation"]["mode"] = data.get("mode", "none")
+            SYSTEM_STATE["teststation"]["last_adc"] = data.get("value_text", "-")
+            SYSTEM_STATE["teststation"]["last_voltage_v"] = data.get("voltage",  0.0)
+            SYSTEM_STATE["teststation"]["last_result"] = data.get("result", "UNKOWN")
             SYSTEM_STATE["teststation"]["last_updated"] = time.strftime("%Y-%m-%d %H:%M:%S")
 
             # PLACE

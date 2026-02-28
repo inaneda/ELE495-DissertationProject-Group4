@@ -90,7 +90,7 @@ and is styled using Bootstrap and custom CSS.
                     <!-- -->
                     <div class="col-6">
                         <div class="mini-card">
-                            <div class="mini-label">ADC</div>
+                            <div class="mini-label">VALUE</div>
                             <div class="mini-value" id="testAdc">-</div>
                         </div>
                     </div>
@@ -107,9 +107,7 @@ and is styled using Bootstrap and custom CSS.
                     </div>
                 </div>
                 <div class="test-actions">
-                    <button class="btn btn-mode" onclick="sendCmd('set_test_mode',{mode:'resistor'})">Resistor</button>
-                    <button class="btn btn-mode" onclick="sendCmd('set_test_mode',{mode:'diode'})">Diode</button>
-                    <button class="btn btn-mode btn-mode-off" onclick="sendCmd('set_test_mode',{mode:'none'})">OFF</button>
+                    <button class="btn btn-mode" onclick="sendCmd('test_measure')">MEASURE</button>
                 </div>
             </div>
         </section>

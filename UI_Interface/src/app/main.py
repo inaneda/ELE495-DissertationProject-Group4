@@ -26,7 +26,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 
-from src.app.core.config import DEMO_MODE, CAMERA_DEVICE_INDEX, ROBOT_PORT, TESTSTATION_PORT
+from src.app.core.config import DEMO_MODE, CAMERA_DEVICE_INDEX, ROBOT_PORT, TESTSTATION_PORT, TESTSTATION_BAUDRATE
 
 # router baglama
 from src.app.routers import status
@@ -67,7 +67,7 @@ async def lifespan(app: FastAPI):
     
     # servisleri initialize etme
     robot_service = init_robot_service(demo_mode=DEMO_MODE, port=ROBOT_PORT)
-    arduino_service = init_arduino_service(demo_mode=DEMO_MODE, port=TESTSTATION_PORT)
+    arduino_service = init_arduino_service(demo_mode=DEMO_MODE, port=TESTSTATION_PORT, baudrate=TESTSTATION_BAUDRATE)
     camera_service = init_camera_service(demo_mode=DEMO_MODE, device_index=CAMERA_DEVICE_INDEX)
     plan_runner = init_plan_runner()
     vision_service = init_vision_service()
