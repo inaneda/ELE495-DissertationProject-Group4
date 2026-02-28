@@ -21,4 +21,4 @@ python-dotenv
 jinja2
 
 # only for raspberry
-picamera2
+# picamera2
