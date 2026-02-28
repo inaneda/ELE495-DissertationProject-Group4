@@ -186,9 +186,28 @@ async function apiFetch(url, options = {}){
 
 // backend config
 async function loadConfig() {
-    const res = await fetch("/api/config");
-    const data = await res.json();
-    API_KEY = data.api_key;
+    // real
+    const stored = localStorage.getItem("PNP_API_KEY");
+    if (stored) API_KEY = stored;
+
+    // demo
+    try {
+        const res = await fetch("/api/config");
+        const data = await res.json();
+    if (data && typeof data.api_key === "string" && data.api_key.length > 0) {
+      API_KEY = data.api_key;
+      localStorage.setItem("PNP_API_KEY", API_KEY); // ilerisi icin sakla
+    }
+  } catch (e) {
+    console.warn("Config fetch failed:", e);
+  }
+  if (!API_KEY) {
+    const entered = prompt("Enter API key (PNP_API_KEY):");
+    if (entered && entered.trim().length > 0) {
+      API_KEY = entered.trim();
+      localStorage.setItem("PNP_API_KEY", API_KEY);
+    }
+  }
 }
 
 
@@ -197,10 +216,6 @@ async function sendCmd(name, payload=null){
     try{
         const res = await apiFetch("/api/commands/",{
             method: "POST",
-            headers: {
-                'Content-Type': 'application/json',
-                'X-API-Key': API_KEY
-            },
             body: JSON.stringify({ name, payload })
         });
 
@@ -396,11 +411,25 @@ async function fetchStatus(){
 }
 
 // kamera icin yineleme
-function refreshCamera(){
+async function refreshCamera(){
     const camImg = document.getElementById("cameraImg");
     if(!camImg) return;
     if(!API_KEY || !CAMERA_OK) return;
-    camImg.src = `/api/camera/snapshot?token=${encodeURIComponent(API_KEY)}&t=${Date.now()}`;
+    try {
+    const res = await apiFetch(`/api/camera/snapshot?t=${Date.now()}`);
+    if (!res.ok) return;
+
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+
+    // eski URL'yi serbest bırak (memory leak olmasın)
+    if (camImg.dataset.prevUrl) URL.revokeObjectURL(camImg.dataset.prevUrl);
+
+    camImg.src = url;
+    camImg.dataset.prevUrl = url;
+  } catch (e) {
+    console.warn("Camera refresh error:", e);
+  }
 }
 
 // acilmadiginda baglantiyi yeniden almaya calisma
@@ -503,4 +532,15 @@ function undoLastPairing() {
 
     renderPairingList();
     console.log('[UNDO] Last pairing removed:', lastPair);
+}
+
+async function apiFetch(url, options = {}) {
+  const headers = options.headers ? { ...options.headers } : {};
+  if (API_KEY) headers["X-API-Key"] = API_KEY;
+
+  if (options.body && !headers["Content-Type"]) {
+    headers["Content-Type"] = "application/json";
+  }
+
+  return fetch(url, { ...options, headers });
 }
