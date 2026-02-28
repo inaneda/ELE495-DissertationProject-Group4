@@ -31,6 +31,7 @@ PAD_POS = {
 
 TEST_STATION_POS: Tuple[float, float, float] = (0.0, 0.0, 0.0)
 
+# !!!!
 SAFE_Z = float(os.environ.get("PNP_SAFE_Z", "5.0"))
 PICK_Z = float(os.environ.get("PNP_PICK_Z", "-1.0"))
 PLACE_Z = float(os.environ.get("PNP_PLACE_Z", "-1.0"))
@@ -45,10 +46,10 @@ def _g0(x: float | None = None, y: float | None = None, z: float | None = None, 
     return " ".join(parts)
 
 
-def home(robot) -> bool:
-    # grbl home mu kullaniyoruz: $H
-    # mekanik sifir noktasi, koordinat sisteminin reseti, program basinda
-    return robot.send_gcode("$H")
+# def home(robot) -> bool:
+#     # grbl home mu kullaniyoruz: $H
+#     # mekanik sifir noktasi, koordinat sisteminin reseti, program basinda
+#     return robot.send_gcode("$H")
 
 
 def move_safe(robot) -> bool:
