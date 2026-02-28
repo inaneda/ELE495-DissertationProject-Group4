@@ -16,15 +16,17 @@ intentionally configurable and may be updated during calibration.
 import os
 from typing import Tuple
 
-# koordinat tablolari
+# koordinat tablolari (mm)
 FEEDER_POS = {
     # part -> (x,y,z)
     # ornek: "R1": (10, 20, -2)
+    "R1": (0, 0, 0)
 }
 
 PAD_POS = {
     # padLabel -> (x,y,z)
     # ornek: "A": (100, 50, -1)
+    "A": (100, 50, -1)
 }
 
 TEST_STATION_POS: Tuple[float, float, float] = (0.0, 0.0, 0.0)
