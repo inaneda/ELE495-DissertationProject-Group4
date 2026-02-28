@@ -20,7 +20,7 @@ from typing import Tuple
 FEEDER_POS = {
     # part -> (x,y,z)
     # ornek: "R1": (10, 20, -2)
-    "R1": (0, 0, 0)
+    "R1": (50, 50, 0)
 }
 
 PAD_POS = {
