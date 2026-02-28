@@ -16,6 +16,7 @@ Responsibilities:
     - Register API routers (status, commands, camera, test station)
     - Act as the central integration point between UI and backend services
 """
+import os
 
 from contextlib import asynccontextmanager
 
@@ -78,6 +79,22 @@ async def lifespan(app: FastAPI):
         robot_service.connect()
         arduino_service.connect()
         camera_service.open()
+
+    startup_gcode = os.environ.get("PNP_STARTUP_GCODE", "").strip()
+    if startup_gcode:
+        try:
+            if robot_service is not None:
+                commands = [cmd.strip() for cmd in startup_gcode.split(";") if cmd.strip()]
+                
+                for cmd in commands:
+                    robot_service.send_gcode(cmd)
+                    print(f"[STARTUP] Sent: {cmd}")
+
+            else:
+                print("[STARTUP] Robot service not available")
+
+        except Exception as e:
+            print(f"[STARTUP] Startup G-code error: {e}")
     
     # polling baslatma
     print("\n[STARTUP] Starting background services...")
