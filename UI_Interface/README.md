@@ -142,28 +142,35 @@ http://YOUR_PC_IP:8000
 
 ### 2. Running on Raspberry Pi (LAN / WLAN)
 
-#### Step 1 - Create a virtual environment
+#### Step 1 - Install required system packages
+sudo apt install -y git python3 python3-venv python3-pip
+sudo apt install -y python3-picamera2
+
+#### Step 2 - Clone the repository
+cd ~
+git clone https://github.com/inaneda/ELE495-DissertationProject-Group4.git
+
+#### Step 2 - Enter the project directory
+cd ELE495-DissertationProject-Group4/UI_Interface
+
+#### Step 4 - Create a virtual environment
 python3 -m venv .venv
 source .venv/bin/activate
 
-#### Step 2 - Install dependencies
+#### Step 5 - Install dependencies
 pip install --upgrade pip
 pip install -r requirements.txt
 
-#### Step 3 - Start the server
+#### Step 6 - Start the server
 uvicorn src.app.main:app --host 0.0.0.0 --port 8000
 
 Accessing from Another Device (LAN/WLAN)
-hostname -I
-
 From another device in the same network:
 http://RASPBERRY_IP:8000
 
 
 Access via Tailscale (Remote Access, WAN)
-
 Install Tailscale:
-
 sudo apt install -y tailscale
 
 After connecting the device to your Tailscale network, you can access:
