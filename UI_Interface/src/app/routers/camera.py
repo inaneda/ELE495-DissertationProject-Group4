@@ -19,7 +19,6 @@ from src.app.core.config import API_KEY, DEMO_MODE
 
 import numpy as np
 import cv2
-from src.app.main import vision_service
 
 router = APIRouter(
     prefix="/api", 
@@ -114,6 +113,8 @@ def restart_camera():
 # camera overlay'i icin yeni endpoint
 @router.get("/camera/overlay", dependencies=[Depends(require_camera_auth)])
 def overlay():
+    from src.app.services.vision_service import vision_service
+    
     svc = _get_cam()
     if svc is None:
         _set_camera_conn(False)
