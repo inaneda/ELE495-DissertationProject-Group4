@@ -3,7 +3,7 @@ File Name       : main.py
 Author          : Eda
 Project         : ELE 495 Dissertation Project - SMD Pick and Place Machine
 Created Date    : 2026-02-01
-Last Modified   : 2026-02-04
+Last Modified   : 2026-02-25
 
 Description:
 This file is the main entry point of the backend application.
@@ -26,7 +26,8 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 
-from src.app.core.config import DEMO_MODE
+from src.app.core.config import DEMO_MODE, CAMERA_DEVICE_INDEX, ROBOT_PORT, TESTSTATION_PORT
+
 # router baglama
 from src.app.routers import status
 from src.app.routers import commands
@@ -40,11 +41,13 @@ from src.app.services.robot_service import init_robot_service
 from src.app.services.arduino_service import init_arduino_service
 from src.app.services.plan_runner import init_plan_runner
 from src.app.services.camera_service import init_camera_service
+from src.app.services.vision_service import init_vision_service
 
 robot_service = None
 arduino_service = None
 camera_service = None
 plan_runner = None
+vision_service = None
 
 ###
 
@@ -54,7 +57,7 @@ plan_runner = None
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # STARTUP
-    global robot_service, arduino_service, camera_service, plan_runner
+    global robot_service, arduino_service, camera_service, plan_runner, vision_service
     
     print(f"\n{'='*60}")
     print(f"SMD Pick&Place Machine Backend Starting")
@@ -63,11 +66,12 @@ async def lifespan(app: FastAPI):
     print(f"{'='*60}\n")
     
     # servisleri initialize etme
-    robot_service = init_robot_service(demo_mode=DEMO_MODE, port="/dev/ttyACM0")
-    arduino_service = init_arduino_service(demo_mode=DEMO_MODE, port="/dev/ttyUSB0")
-    camera_service = init_camera_service(demo_mode=DEMO_MODE, device_index=0)
+    robot_service = init_robot_service(demo_mode=DEMO_MODE, port=ROBOT_PORT)
+    arduino_service = init_arduino_service(demo_mode=DEMO_MODE, port=TESTSTATION_PORT)
+    camera_service = init_camera_service(demo_mode=DEMO_MODE, device_index=CAMERA_DEVICE_INDEX)
     plan_runner = init_plan_runner()
-    
+    vision_service = init_vision_service()
+
     # real:
     if not DEMO_MODE:
         print("\n[STARTUP] Connecting to hardware...")

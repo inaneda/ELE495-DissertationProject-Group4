@@ -3,7 +3,7 @@ File Name       : plan_runner.py
 Author          : Eda
 Project         : ELE 495 Dissertation Project - SMD Pick and Place Machine
 Created Date    : 2026-02-05
-Last Modified   : 2026-02-05
+Last Modified   : 2026-02-25
 
 Description:
 Plan execution service.
@@ -60,8 +60,27 @@ class PlanRunner:
         ts = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         SYSTEM_STATE["logs"].append(f"[{ts}] {msg}")
 
+    def _wait(self, seconds: float) -> bool:
+        """Wait but stop instantly if stop requested. Returns False if stopped."""
+        return not self._stop_event.wait(seconds)
+
     def _loop(self) -> None:
         from src.app.routers.status import SYSTEM_STATE
+
+        from src.app.main import robot_service, arduino_service, camera_service
+        try:
+            from src.app.main import vision_service
+        except Exception:
+            vision_service = None
+
+        from src.app.services.robot_actions import pick_part, goto_test_station, place_part
+        if robot_service is None:
+            self._log("Robot service not initialized")
+            SYSTEM_STATE["robot"]["status"] = "error"
+            return
+        if arduino_service is None:
+            self._log("Arduino service not initialized (test station disabled)")
+
 
         plan = SYSTEM_STATE.get("plan", [])
         if not plan:
@@ -92,11 +111,43 @@ class PlanRunner:
             part = str(step.get("part", "")).upper()
             pad = str(step.get("padLabel", step.get("padName", ""))).upper()
             step_no = i + 1
-   
+            
             # PICK
             SYSTEM_STATE["robot"]["current_task"] = f"Step {step_no}/{total}: PICK {part}"
             self._log(f"Step {step_no}: PICK {part}")
-            time.sleep(self.step_delay_s)
+            ok = pick_part(robot_service, part)
+            
+            if not self._wait(self.step_delay_s):
+                self._log("PlanRunner stopped by user.")
+                SYSTEM_STATE["robot"]["status"] = "stopped"
+                SYSTEM_STATE["robot"]["current_task"] = "-"
+                self.current_step = i
+                self.paused = True
+                return
+            
+            if not ok:
+                self._log(f"Step {step_no}: PICK failed for {part}")
+                SYSTEM_STATE["robot"]["status"] = "error"
+                return
+
+            # --- PICK dogrulama (vision)
+            if camera_service is not None:
+                jpg = camera_service.get_jpeg()
+                if jpg and vision_service is not None and getattr(vision_service, "is_ready", lambda: False)():
+                    import numpy as np
+                    import cv2
+                    arr = np.frombuffer(jpg, dtype=np.uint8)
+                    frame = cv2.imdecode(arr, cv2.IMREAD_COLOR)
+                    if frame is not None:
+                        dets = vision_service.detect(frame)
+                        if dets:
+                            top = dets[0]
+                            SYSTEM_STATE["image_processing"]["last_detection"] = {
+                                "component": part,
+                                "type": vision_service.class_names.get(top.class_id, str(top.class_id)),
+                                "confidence": float(top.score),
+                            }
+            SYSTEM_STATE["image_processing"]["last_updated"] = time.strftime("%Y-%m-%dT%H:%M:%S")
 
             # STOP tekrar kontrol
             if self._stop_event.is_set():
@@ -107,10 +158,74 @@ class PlanRunner:
                 self.paused = True
                 return
 
+            # TEST STATION
+            SYSTEM_STATE["robot"]["current_task"] = f"Step {step_no}/{total}: TEST {part}"
+            self._log(f"Step {step_no}: TEST {part}")
+
+            ok = goto_test_station(robot_service)
+
+            if not self._wait(self.step_delay_s):
+                self._log("PlanRunner stopped by user.")
+                SYSTEM_STATE["robot"]["status"] = "stopped"
+                SYSTEM_STATE["robot"]["current_task"] = "-"
+                self.current_step = i
+                self.paused = True
+                return
+
+            if not ok:
+                self._log(f"Step {step_no}: goto_test_station failed")
+                SYSTEM_STATE["robot"]["status"] = "error"
+                return
+
+            # --- arduino'dan olcum alma
+            data = arduino_service.read_adc() if arduino_service is not None else {"result": "NO_SERVICE"}
+            SYSTEM_STATE["teststation"]["last_adc"] = data.get("adc")
+            SYSTEM_STATE["teststation"]["last_voltage_v"] = data.get("voltage")
+            SYSTEM_STATE["teststation"]["last_result"] = data.get("result")
+            SYSTEM_STATE["teststation"]["last_updated"] = time.strftime("%Y-%m-%d %H:%M:%S")
+
             # PLACE
             SYSTEM_STATE["robot"]["current_task"] = f"Step {step_no}/{total}: PLACE {part} -> {pad}"
             self._log(f"Step {step_no}: PLACE {part} -> {pad}")
-            time.sleep(self.step_delay_s)
+            
+            ok = place_part(robot_service, pad)
+
+            if not self._wait(self.step_delay_s):
+                self._log("PlanRunner stopped by user.")
+                SYSTEM_STATE["robot"]["status"] = "stopped"
+                SYSTEM_STATE["robot"]["current_task"] = "-"
+                self.current_step = i
+                self.paused = True
+                return
+            
+            if not ok:
+                self._log(f"Step {step_no}: PLACE failed for {part} -> {pad}")
+                SYSTEM_STATE["robot"]["status"] = "error"
+                return
+
+            # --- PLACE dogrulama (vision)
+            if camera_service is not None:
+                jpg = camera_service.get_jpeg()
+                if jpg and vision_service is not None and getattr(vision_service, "is_ready", lambda: False)():
+                    import numpy as np
+                    import cv2
+                    from src.app.vision.placement_verify import verify_placement
+
+                    arr = np.frombuffer(jpg, dtype=np.uint8)
+                    frame = cv2.imdecode(arr, cv2.IMREAD_COLOR)
+                    if frame is not None:
+                        dets = vision_service.detect(frame)
+                        # sonra bak !!! detection var yok var simdilik
+                        # acc = 100.0 if len(dets) > 0 else 0.0
+                        if dets:
+                            top = dets[0]  # en yuksek skor
+                            res = verify_placement(pad, top.box, tolerance_px=30)
+                        else:
+                            res = {"pad": pad, "status": "NO_DETECTION", "accuracy": 0.0}
+                        
+                        SYSTEM_STATE["image_processing"]["last_placement"] = res
+                        SYSTEM_STATE["image_processing"]["last_updated"] = time.strftime("%Y-%m-%dT%H:%M:%S")
+                        
 
         # plan bitince
         SYSTEM_STATE["robot"]["status"] = "idle"

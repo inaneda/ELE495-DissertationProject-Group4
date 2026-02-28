@@ -1,12 +1,32 @@
 # Python
 __pycache__/
 *.pyc
+*.pyo
+*.pyd
+*.log
+*.sqlite3
+
+# envs
 .venv/
 venv/
+.env
+
+.env
+.env.*
+
+
+build/
+dist/
+*.egg-info/
+
 
 # VSCode
 .vscode/
+.idea/
 
 # OS
 .DS_Store
 Thumbs.db
+
+# ONNX model cok buyuk
+*.onnx

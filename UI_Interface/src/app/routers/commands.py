@@ -124,4 +124,4 @@ def post_command(cmd: CommandRequest):
 
     # Error : bilinmeyen bir komut
     _log(f"Unknown command received: {cmd.name}")
-    return {"ok": False, "error": "Unknown command: {cmd.name}"}
+    return {"ok": False, "error": f"Unknown command: {cmd.name}"}

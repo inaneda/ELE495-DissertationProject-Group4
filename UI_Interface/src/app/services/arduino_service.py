@@ -6,11 +6,6 @@ Created Date    : 2026-02-04
 Last Modified   : 2026-02-04
 
 Description:
-This service handles communication with the Arduino board via USB serial.
-The Arduino is connected to the Raspberry Pi and provides sensor readings
-(e.g., ADC, voltage, component test results).
-
-Description:
 Test station Arduino service with DEMO and REAL modes.
 - DEMO mode: Simulates ADC readings
 - REAL mode: Reads from Arduino via USB serial

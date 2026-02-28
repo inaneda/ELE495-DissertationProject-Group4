@@ -5,13 +5,20 @@ uvicorn[standard]
 # serial communication (arduino)
 pyserial
 
-# camera - image handling
+# camera - image handling - vision
 # opencv-python
 opencv-python-headless
 numpy
+onnxruntime
 
 # data handling & logging
 pydantic
 
-# for README.md file
+# for README.md file and .env file
 python-dotenv
+
+# templates
+jinja2
+
+# only for raspberry
+picamera2

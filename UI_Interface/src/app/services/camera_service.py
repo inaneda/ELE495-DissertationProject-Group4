@@ -15,43 +15,74 @@ Camera service with DEMO and REAL modes.
 """
 
 import cv2
-import platform
 
 class CameraService:
     def __init__(self, demo_mode: bool = True, device_index: int = 0):
         self.demo_mode = demo_mode
         self.device_index = device_index
         self.cap = None
+        # pi camera module icin
+        self.picam = None
+        self.picam_configured = False
         print(f"[CAMERA] Initialized in {'DEMO' if demo_mode else 'REAL'} mode")
+
 
     def open(self) -> bool:
         """Open the camera device."""
-        if getattr(self, "cap", None) is not None:
-            return True
+        if self.demo_mode:
+            if getattr(self, "cap", None) is not None:
+                return True
+        else:
+            if getattr(self, "picam", None) is not None:
+                return True
 
         import cv2
         import platform
         
         try:
-            if platform.system() == "Windows":
-                cap = cv2.VideoCapture(self.device_index, cv2.CAP_DSHOW)
+            if self.demo_mode:
+                # demo
+                if platform.system() == "Windows":
+                    cap = cv2.VideoCapture(self.device_index, cv2.CAP_DSHOW)
+                else:
+                    cap = cv2.VideoCapture(self.device_index)
+
+                if not cap or not cap.isOpened():
+                    try:
+                        if cap:
+                            cap.release()
+                    except Exception:
+                        pass
+                    self.cap = None
+                    return False
+
+                self.cap = cap
+                return True
             else:
-                cap = cv2.VideoCapture(self.device_index)
-
-            if not cap or not cap.isOpened():
+                # real - Picamera2
                 try:
-                    if cap:
-                        cap.release()
-                except Exception:
-                    pass
-                self.cap = None
-                return False
+                    from picamera2 import Picamera2
+                except Exception as e:
+                    print(f"[CAMERA] Picamera2 import failed: {e}")
+                    self.picam = None
+                    return False
 
-            self.cap = cap
-            return True
+                picam = Picamera2()
 
-        except Exception:
+                # RGB/BGR dizisi
+                cfg = picam.create_preview_configuration(main={"size": (1280, 720), "format": "RGB888"})
+                picam.configure(cfg)
+                picam.start()
+
+                self.picam = picam
+                self.picam_configured = True
+                return True
+
+        except Exception as e:
+            print(f"[CAMERA] open() error: {e}")
             self.cap = None
+            self.picam = None
+            self.picam_configured = False
             return False
     
 
@@ -64,18 +95,46 @@ class CameraService:
                 pass
             self.cap = None
 
+        picam = getattr(self, "picam", None)
+        if picam is not None:
+            try:
+                picam.stop()
+            except Exception:
+                pass
+            try:
+                picam.close()
+            except Exception:
+                pass
+            self.picam = None
+            self.picam_configured = False
+
 
     def get_jpeg(self) -> bytes | None:
         """Capture one frame and return it as JPEG bytes."""
-        if self.cap is None and not self.open():
-            return None
+        # demo
+        if self.demo_mode:    
+            if self.cap is None and not self.open():
+                return None
 
-        ok, frame = self.cap.read()
+            ok, frame = self.cap.read()
 
-        if not ok or frame is None:
-            print("[CAMERA] Failed to read frame")
-            return None
-        
+            if not ok or frame is None:
+                print("[CAMERA] Failed to read frame (DEMO)")
+                return None
+        # real
+        else:
+            if self.picam is None and not self.open():
+                return None
+
+            try:
+                # OpenCV BGR bekler ama jpeg icin onemli degil
+                # overlay cizilirken BGR'a cevirmme yapilacak
+                frame = self.picam.capture_array()
+                frame = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
+            except Exception as e:
+                print(f"[CAMERA] Failed to capture frame (REAL): {e}")
+                return None
+
         # jpeg'e donusturme
         ok2, buf = cv2.imencode(".jpg", frame)
         if not ok2:

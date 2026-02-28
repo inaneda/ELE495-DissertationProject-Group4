@@ -13,5 +13,8 @@ numpy
 # data handling & logging
 pydantic
 
-# for README.md file
+# for README.md file and .env file
 python-dotenv
+
+# templates
+jinja2

@@ -3,7 +3,7 @@
 * Author          : Eda
 * Project         : ELE 495 Dissertation Project - SMD Pick and Place Machine
 * Created Date    : 2026-01-25
-* Last Modified   : 2026-02-01
+* Last Modified   : 2026-02-25
 * 
 * Description:
 * This file implements the client-side logic of the web-based user interface.
