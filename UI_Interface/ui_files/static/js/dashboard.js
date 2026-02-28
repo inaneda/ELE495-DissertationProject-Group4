@@ -533,14 +533,3 @@ function undoLastPairing() {
     renderPairingList();
     console.log('[UNDO] Last pairing removed:', lastPair);
 }
-
-async function apiFetch(url, options = {}) {
-  const headers = options.headers ? { ...options.headers } : {};
-  if (API_KEY) headers["X-API-Key"] = API_KEY;
-
-  if (options.body && !headers["Content-Type"]) {
-    headers["Content-Type"] = "application/json";
-  }
-
-  return fetch(url, { ...options, headers });
-}
