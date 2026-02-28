@@ -22,16 +22,14 @@ It integrates:
 ---
 
 ## Project Structure
+```
 src/app
-|--- core # Configuration and environment settings
-
-|--- routers # API endpoint definitions
-
-|--- services # Robot, camera, vision, and execution logic
-
-|--- vision # YOLO runtime and placement verification
-
-|--- main.py # FastAPI application entry point
+|--- core      # Configuration and environment settings
+|--- routers   # API endpoint definitions
+|--- services  # Robot, camera, vision, execution logic
+|--- vision    # YOLO runtime and placement verification
+|--- main.py   # FastAPI application entry point
+```
 
 ---
 
