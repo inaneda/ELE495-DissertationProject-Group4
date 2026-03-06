@@ -43,33 +43,31 @@ Key components:
   Single source of truth for model loading, preprocessing, postprocessing, and inference.
 
 - `vision_service.py`  
-  Backend wrapper that connects the runtime to API endpoints.
+  Performs ONNX inference and computes placement accuracy using IoU between
+  detected bounding boxes and predefined pad target regions.
 
 - `placement_verify.py`  
-  Computes placement accuracy based on:
-  - Bounding box center
-  - Expected pad center (pixel coordinates)
-  - Distance tolerance threshold
+  Legacy module for distance-based verification (kept for reference).
+
 
 ### Placement Accuracy Logic
 
-Placement accuracy is calculated using the pixel distance between:
-
-- Detected component center
-- Expected pad center
+Placement accuracy is calculated using the Intersection over Union (IoU)
+between the detected component bounding box and the expected pad target area.
 
 The verification returns:
 
-- Distance in pixels
-- Tolerance threshold
-- Accuracy score (0–100%)
-- Status (OK or FAIL)
+- IoU score
+- Accuracy percentage (IoU × 100)
+- Placement error (100 − accuracy)
+- Status (OK or NO_MATCH)
 
 ---
 
 ## Pick and Place Execution Flow
 
-The execution pipeline is managed by `plan_runner.py`:
+The execution pipeline is managed by `gcode_runner.py`:
+(previously managed by plan_runner.py)
 
 1. Pick component from feeder
 2. Optional vision verification
@@ -77,6 +75,14 @@ The execution pipeline is managed by `plan_runner.py`:
 4. Electrical measurement (Arduino ADC)
 5. Place component on PCB pad
 6. Placement verification using vision
+
+
+### Vision Integration in Execution Pipeline
+
+Vision checks are automatically triggered during robot execution:
+
+- After component pickup (PICK_Z) → component detection
+- After placement (PLACE) → placement verification using IoU
 
 ---
 
