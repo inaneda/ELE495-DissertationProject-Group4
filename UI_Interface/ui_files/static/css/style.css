@@ -51,8 +51,8 @@ and academic-project-appropriate user interface.
 
   /* grid'lerin yerlesim plani */
   grid-template-areas:
-    "history    history     test       plan"
-    "robot      camera      camera     commands";
+    "history     test       plan       commands"
+    "history     robot      camera     commands";
 }
 
 
@@ -360,6 +360,7 @@ eslestirme yapilmadiginda
   gap: 10px;
   height: calc(100% - 38px);
   overflow: hidden;
+  align-items: center;
 }
 /* test istasyonunda yasanan tasmayi kontrol ediyor  */
 #panel-test .panel-body-col .row{
@@ -367,7 +368,17 @@ eslestirme yapilmadiginda
   overflow: auto; /* tasma olunca scroll ekliyor */
   padding-right: 4px;
 }
+#panel-commands .panel-body{
+  display: flex;
+  justify-content: center;
+}
 
+#panel-commands .panel-body-col{
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
 
 /* mode butonlari icin - kontrast */
 .btn-mode{
