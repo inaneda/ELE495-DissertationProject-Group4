@@ -3,7 +3,7 @@ File Name       : arduino_service.py
 Author          : Eda
 Project         : ELE 495 Dissertation Project - SMD Pick and Place Machine
 Created Date    : 2026-02-04
-Last Modified   : 2026-02-04
+Last Modified   : 2026-03-05
 
 Description:
 Test station Arduino service with DEMO and REAL modes.
@@ -240,9 +240,6 @@ class ArduinoService:
                 SYSTEM_STATE["teststation"]["last_updated"] = time.strftime("%Y-%m-%d %H:%M:%S")
             else:
                 # real:                
-                SYSTEM_STATE["teststation"]["last_adc"] = data["adc"]
-                SYSTEM_STATE["teststation"]["last_voltage_v"] = data["voltage"]
-                SYSTEM_STATE["teststation"]["last_result"] = data["result"]
                 SYSTEM_STATE["teststation"]["last_updated"] = time.strftime("%Y-%m-%d %H:%M:%S")
                 SYSTEM_STATE["connections"]["arduino_teststation"]["status"] = self._connected
                 SYSTEM_STATE["connections"]["arduino_teststation"]["port"] = self.port if self._connected else None

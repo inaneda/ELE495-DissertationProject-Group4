@@ -109,38 +109,46 @@ class CameraService:
             self.picam_configured = False
 
 
-    def get_jpeg(self) -> bytes | None:
-        """Capture one frame and return it as JPEG bytes."""
+    def get_frame(self):
+        """
+        Capture one frame and return it as BGR numpy array.
+        DEMO: OpenCV webcam
+        REAL: Picamera2
+        """
         # demo
-        if self.demo_mode:    
+        if self.demo_mode:
             if self.cap is None and not self.open():
                 return None
 
             ok, frame = self.cap.read()
-
             if not ok or frame is None:
                 print("[CAMERA] Failed to read frame (DEMO)")
                 return None
+            return frame
+
         # real
-        else:
-            if self.picam is None and not self.open():
-                return None
+        if self.picam is None and not self.open():
+            return None
 
-            try:
-                # OpenCV BGR bekler ama jpeg icin onemli degil
-                # overlay cizilirken BGR'a cevirmme yapilacak
-                frame = self.picam.capture_array()
-                frame = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
-            except Exception as e:
-                print(f"[CAMERA] Failed to capture frame (REAL): {e}")
-                return None
+        try:
+            frame = self.picam.capture_array()
+            frame = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
+            return frame
+        except Exception as e:
+            print(f"[CAMERA] Failed to capture frame (REAL): {e}")
+            return None
+    
 
-        # jpeg'e donusturme
-        ok2, buf = cv2.imencode(".jpg", frame)
-        if not ok2:
+    def get_jpeg(self) -> bytes | None:
+        frame = self.get_frame()
+        if frame is None:
+            return None
+
+        ok, buf = cv2.imencode(".jpg", frame)
+        if not ok:
             print("[CAMERA] Failed to encode frame")
             return None
-        
+
         return buf.tobytes()
 
 

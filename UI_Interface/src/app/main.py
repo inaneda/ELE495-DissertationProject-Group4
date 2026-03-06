@@ -3,7 +3,7 @@ File Name       : main.py
 Author          : Eda
 Project         : ELE 495 Dissertation Project - SMD Pick and Place Machine
 Created Date    : 2026-02-01
-Last Modified   : 2026-02-25
+Last Modified   : 2026-03-05
 
 Description:
 This file is the main entry point of the backend application.
@@ -27,28 +27,37 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 
-from src.app.core.config import DEMO_MODE, CAMERA_DEVICE_INDEX, ROBOT_PORT, TESTSTATION_PORT, TESTSTATION_BAUDRATE
+from src.app.core.config import (
+    DEMO_MODE, 
+    CAMERA_DEVICE_INDEX, 
+    ROBOT_PORT, 
+    TESTSTATION_PORT, 
+    TESTSTATION_BAUDRATE,
+)
 
 # router baglama
 from src.app.routers import status
 from src.app.routers import commands
 from src.app.routers import camera
-from src.app.routers import plan
+# from src.app.routers import plan
 from src.app.routers import config as config_router
 
 
 # service baglama - tset amacli
 from src.app.services.robot_service import init_robot_service
 from src.app.services.arduino_service import init_arduino_service
-from src.app.services.plan_runner import init_plan_runner
+# from src.app.services.plan_runner import init_plan_runner
 from src.app.services.camera_service import init_camera_service
 from src.app.services.vision_service import init_vision_service
+from src.app.services.gcode_runner import init_gcode_runner
 
 robot_service = None
 arduino_service = None
 camera_service = None
-plan_runner = None
+# plan_runner = None
 vision_service = None
+gcode_runner = None
+
 
 ###
 
@@ -58,7 +67,7 @@ vision_service = None
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # STARTUP
-    global robot_service, arduino_service, camera_service, plan_runner, vision_service
+    global robot_service, arduino_service, camera_service, vision_service, gcode_runner
     
     print(f"\n{'='*60}")
     print(f"SMD Pick&Place Machine Backend Starting")
@@ -70,8 +79,9 @@ async def lifespan(app: FastAPI):
     robot_service = init_robot_service(demo_mode=DEMO_MODE, port=ROBOT_PORT)
     arduino_service = init_arduino_service(demo_mode=DEMO_MODE, port=TESTSTATION_PORT, baudrate=TESTSTATION_BAUDRATE)
     camera_service = init_camera_service(demo_mode=DEMO_MODE, device_index=CAMERA_DEVICE_INDEX)
-    plan_runner = init_plan_runner()
+    # plan_runner = init_plan_runner()
     vision_service = init_vision_service()
+    gcode_runner = init_gcode_runner()
 
     # real:
     if not DEMO_MODE:
@@ -80,15 +90,16 @@ async def lifespan(app: FastAPI):
         arduino_service.connect()
         camera_service.open()
 
+    # !!opsiyonel!! sunucuya baglandigi an robot kolu harekti
     startup_gcode = os.environ.get("PNP_STARTUP_GCODE", "").strip()
     if startup_gcode:
         try:
             if robot_service is not None:
-                commands = [cmd.strip() for cmd in startup_gcode.split(";") if cmd.strip()]
+                startup_lines = [cmd.strip() for cmd in startup_gcode.split(";") if cmd.strip()]
                 
-                for cmd in commands:
-                    robot_service.send_gcode(cmd)
-                    print(f"[STARTUP] Sent: {cmd}")
+                for line in startup_lines:
+                    robot_service.send_gcode(line)
+                    print(f"[STARTUP] Sent: {line}")
 
             else:
                 print("[STARTUP] Robot service not available")
@@ -107,14 +118,22 @@ async def lifespan(app: FastAPI):
     
     # SHUTDOWN
     print("\n[SHUTDOWN] Stopping services...")
-    robot_service.stop_polling()
-    arduino_service.stop_polling()
-    plan_runner.stop()
+    if robot_service is not None:
+        robot_service.stop_polling()
+
+    if arduino_service is not None:
+        arduino_service.stop_polling()
+
+    if gcode_runner is not None:
+        gcode_runner.stop()
     
     if not DEMO_MODE:
-        robot_service.disconnect()
-        arduino_service.disconnect()
-        camera_service.close()
+        if robot_service is not None:
+            robot_service.disconnect()
+        if arduino_service is not None:
+            arduino_service.disconnect()
+        if camera_service is not None:
+            camera_service.close()
     
     print(" Shutdown complete\n")
 
@@ -158,5 +177,5 @@ def index(request: Request):
 app.include_router(status.router)
 app.include_router(commands.router)
 app.include_router(camera.router)
-app.include_router(plan.router)
+# app.include_router(plan.router)
 app.include_router(config_router.router)

@@ -48,9 +48,9 @@ def _log(msg: str) -> None:
     ts = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     SYSTEM_STATE["logs"].append(f"[{ts}] {msg}")
 
-    # log sinirlandirmasi : son 200 satir !!!!!! iyi mi???
-    if len(SYSTEM_STATE["logs"]) > 200:
-        SYSTEM_STATE["logs"] = SYSTEM_STATE["logs"][-200:]
+    # log sinirlandirmasi : son 300 satir
+    if len(SYSTEM_STATE["logs"]) > 300:
+        SYSTEM_STATE["logs"] = SYSTEM_STATE["logs"][-300:]
 
 # endpoint : POST
 # CommandRequest gelen veri JSON -> Python Object
@@ -64,66 +64,43 @@ def post_command(cmd: CommandRequest):
         - stop
         - reset
         - set_test_mode (payload: {"mode": "resistor"|"diode"|"none"})
+        - test_measure
     """
     from src.app.routers.status import SYSTEM_STATE
-    from src.app.main import plan_runner
+    from src.app.main import gcode_runner 
 
-    name = cmd.name.strip().lower()
+    name = (cmd.name or "").strip().lower()
     payload = cmd.payload or {}
+
+    if gcode_runner is None:
+        raise HTTPException(status_code=500, detail="GCodeRunner not initialized")
 
     # START
     if name == "start":
-        # pnp file olmadan sistem calistirilamasin
-        plan = SYSTEM_STATE.get("plan", [])
-
-        if not plan:
-            raise HTTPException(status_code=400, detail="No plan. Please send plan first.")
-
-        plan_runner.start()
-
-        SYSTEM_STATE["robot"]["status"] = "running"
-        SYSTEM_STATE["robot"]["current_task"] = "PlanRunner running"
+        gcode_runner.start()
         _log("Command received: START")
-        return {"ok": True, "message": "Plan started"}
+        return {"ok": True, "message": "Program started/resumed"}
 
     # STOP
-    elif name == "stop":
-
-        # demo
-        plan_runner.stop()
-        SYSTEM_STATE["robot"]["status"] = "stopped"
-        SYSTEM_STATE["robot"]["current_task"] = "-"
+    if name == "stop":
+        gcode_runner.stop()
         _log("Command received: STOP")
-        return {"ok": True, "message": "Plan stopped"}
+        return {"ok": True, "message": "Program paused"}
 
     # RESET
-    elif name == "reset":
-
-        # demo
-        plan_runner.reset()
-        # plan reseti
-        SYSTEM_STATE["plan"] = []
-        SYSTEM_STATE["plan_received_at"] = None
-        # robot durumu reseti
-        SYSTEM_STATE["robot"]["status"] = "idle"
-        SYSTEM_STATE["robot"]["current_task"] = "-"
-        SYSTEM_STATE["robot"]["x"] = 0
-        SYSTEM_STATE["robot"]["y"] = 0
-        SYSTEM_STATE["robot"]["z"] = 0
-
-        SYSTEM_STATE["logs"] = ["System reset"]
+    if name == "reset":
+        gcode_runner.reset()
         _log("Command received: RESET")
-        return {"ok": True, "message": "System reset complete"}
+        return {"ok": True, "message": "Program reset"}
 
     # TEST MODE
-    elif name == "set_test_mode":
-        payload = payload or {}
+    if name == "set_test_mode":
         mode = str(payload.get("mode", "none")).lower()
         SYSTEM_STATE["teststation"]["mode"] = mode
         _log(f"Command received: SET_TEST_MODE ({mode})")
         return {"ok": True, "message": f"Test mode set to {mode}"}
     
-    elif name == "test_measure":
+    if name == "test_measure":
         from src.app.main import arduino_service
         if arduino_service is None:
             raise HTTPException(status_code=500, detail="Arduino service not initialized")

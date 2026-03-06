@@ -3,7 +3,7 @@
 * Author          : Eda
 * Project         : ELE 495 Dissertation Project - SMD Pick and Place Machine
 * Created Date    : 2026-01-25
-* Last Modified   : 2026-02-25
+* Last Modified   : 2026-03-04
 * 
 * Description:
 * This file implements the client-side logic of the web-based user interface.
@@ -23,20 +23,18 @@
 
 // API key
 let API_KEY = null;
-
-
-let selectedPart = null;
-// pad - komponent atamalarini tutuyor : { "konum-a": "d1" ... }
-const assignments = {};
-
-// ekranda “Pick Order - Place Order” olarak gostermek icin tiklama sirasi
-// [{ part:"d1", padName:"konum-a", padLabel:"a" }, ...]
-const pairings = [];
-// NOTE: pairingOrder is the single source of truth used by the UI logic
-const pairingOrder = pairings;
 let CAMERA_OK = false;
 
 
+// let selectedPart = null;
+// pad - komponent atamalarini tutuyor : { "konum-a": "d1" ... }
+// const assignments = {};
+
+// ekranda “Pick Order - Place Order” olarak gostermek icin tiklama sirasi
+// [{ part:"d1", padName:"konum-a", padLabel:"a" }, ...]
+// const pairings = [];
+// NOTE: pairingOrder is the single source of truth used by the UI logic
+// const pairingOrder = pairings;
 
 
 // DOM - HTML yardimcilari
@@ -50,114 +48,114 @@ function setText(id, value){
 }
 
 
-// UI - arayuzdeki komponent secimi
-function setSelectedPart(part){
-    selectedPart = part;
-    setText("selectedPart", part ? part.toUpperCase() : "-");   // "SELECTED: -" kisminin guncellenmesi icin
+// // UI - arayuzdeki komponent secimi
+// function setSelectedPart(part){
+//     selectedPart = part;
+//     setText("selectedPart", part ? part.toUpperCase() : "-");   // "SELECTED: -" kisminin guncellenmesi icin
     
-    // class guncellemesi
-    document.querySelectorAll(".pick-btn").forEach((btn) => {
-        const p = btn.dataset.pick;          // d1/d2/r1/r2
-        btn.classList.toggle("selected", p === part);
-    });
-}
+//     // class guncellemesi
+//     document.querySelectorAll(".pick-btn").forEach((btn) => {
+//         const p = btn.dataset.pick;          // d1/d2/r1/r2
+//         btn.classList.toggle("selected", p === part);
+//     });
+// }
 
-// UI - arayuzdeki pad butonundaki yazinin guncellenmesi : a -> a (D1) 
-function updatePadButton(padName, part){
-  const btn = document.querySelector(`.place-btn[data-pad="${padName}"]`);
-  if (!btn) return;
+// // UI - arayuzdeki pad butonundaki yazinin guncellenmesi : a -> a (D1) 
+// function updatePadButton(padName, part){
+//   const btn = document.querySelector(`.place-btn[data-pad="${padName}"]`);
+//   if (!btn) return;
 
-  const label = btn.dataset.place || padName; // a/b/c/d
-  if (part){
-    btn.textContent = `${label} (${part.toUpperCase()})`;
-  } else{
-    btn.textContent = label;
-  }
-}
-
-
-// Pairing panelinin gosterilmesi - rendering
-function renderPairingList(){
-    const list = $("pairingList");
-    if (!list) return;
-
-    // eslestirme yok ise
-    if (pairingOrder.length === 0){
-        list.innerHTML = `<div class="pairing-empty">Component and pad mapping has not been done yet.</div>`;
-        return;
-    }
-    // satirlar
-    const rowsHtml = pairingOrder.map((it) =>{
-        return `<div class="pairing-row">
-                <span class="pairing-pill">${it.part.toUpperCase()}</span>
-                <span class="pairing-arrow">→</span>
-                <span class="pairing-pill">${it.padLabel.toUpperCase()}</span>
-                </div>`;
-    }).join("");
-
-  list.innerHTML = rowsHtml;
-}
+//   const label = btn.dataset.place || padName; // a/b/c/d
+//   if (part){
+//     btn.textContent = `${label} (${part.toUpperCase()})`;
+//   } else{
+//     btn.textContent = label;
+//   }
+// }
 
 
-// eslestirilecek yer secme
-function assignPad(padName){
-    if(!selectedPart){
-        alert(" No component selected; component must be selected first.\n(D1/D2/R1/R2).");
-        return;
-    }
-    const btn = document.querySelector(`.place-btn[data-pad="${padName}"]`);
-    const padLabel = btn?.dataset?.place ?? padName;
+// // Pairing panelinin gosterilmesi - rendering
+// function renderPairingList(){
+//     const list = $("pairingList");
+//     if (!list) return;
+
+//     // eslestirme yok ise
+//     if (pairingOrder.length === 0){
+//         list.innerHTML = `<div class="pairing-empty">Component and pad mapping has not been done yet.</div>`;
+//         return;
+//     }
+//     // satirlar
+//     const rowsHtml = pairingOrder.map((it) =>{
+//         return `<div class="pairing-row">
+//                 <span class="pairing-pill">${it.part.toUpperCase()}</span>
+//                 <span class="pairing-arrow">→</span>
+//                 <span class="pairing-pill">${it.padLabel.toUpperCase()}</span>
+//                 </div>`;
+//     }).join("");
+
+//   list.innerHTML = rowsHtml;
+// }
+
+
+// // eslestirilecek yer secme
+// function assignPad(padName){
+//     if(!selectedPart){
+//         alert(" No component selected; component must be selected first.\n(D1/D2/R1/R2).");
+//         return;
+//     }
+//     const btn = document.querySelector(`.place-btn[data-pad="${padName}"]`);
+//     const padLabel = btn?.dataset?.place ?? padName;
     
-    const alreadyUsedPad = Object.keys(assignments).find(
-        (k) => assignments[k] === selectedPart && k !== padName
-    );
-    if(alreadyUsedPad){
-        alert(`${selectedPart.toUpperCase()} already assigned.\n(Choose a different component.)`);
-        return;
-    }
+//     const alreadyUsedPad = Object.keys(assignments).find(
+//         (k) => assignments[k] === selectedPart && k !== padName
+//     );
+//     if(alreadyUsedPad){
+//         alert(`${selectedPart.toUpperCase()} already assigned.\n(Choose a different component.)`);
+//         return;
+//     }
 
-    // assignments guncellemesi
-    assignments[padName] = selectedPart;
+//     // assignments guncellemesi
+//     assignments[padName] = selectedPart;
 
-    // pad butonunun guncellemesi
-    updatePadButton(padName, selectedPart);
+//     // pad butonunun guncellemesi
+//     updatePadButton(padName, selectedPart);
 
-    // eslestirme siralamai
-    // ayni pad daha once eklendiyse guncellenir, yoksa eklenir?????????????????
-    const idx = pairingOrder.findIndex(x => x.padName === padName);
-    const item = { part: selectedPart, padName, padLabel };
+//     // eslestirme siralamai
+//     // ayni pad daha once eklendiyse guncellenir, yoksa eklenir?????????????????
+//     const idx = pairingOrder.findIndex(x => x.padName === padName);
+//     const item = { part: selectedPart, padName, padLabel };
 
-    if (idx >= 0){
-        pairingOrder[idx] = item;
-    } else{
-        pairingOrder.push(item);
-    }
+//     if (idx >= 0){
+//         pairingOrder[idx] = item;
+//     } else{
+//         pairingOrder.push(item);
+//     }
 
-    renderPairingList();
-}
+//     // renderPairingList();
+// }
 
 
-// olaylarin baglanmasi
-function bindUIEvents(){
-    // secme butonlari - pick
-    document.querySelectorAll(".pick-btn").forEach((btn) =>{
+// // olaylarin baglanmasi
+// function bindUIEvents(){
+//     // secme butonlari - pick
+//     document.querySelectorAll(".pick-btn").forEach((btn) =>{
         
-        btn.addEventListener("click", () => {
-            const part = btn.dataset.pick; // D1/D2/R1/R2
-            setSelectedPart(part);
-        });
-    });
+//         btn.addEventListener("click", () => {
+//             const part = btn.dataset.pick; // D1/D2/R1/R2
+//             // setSelectedPart(part);
+//         });
+//     });
 
-    // yerlestirme butonlari - place
-    document.querySelectorAll(".place-btn").forEach((btn) =>{
+//     // yerlestirme butonlari - place
+//     document.querySelectorAll(".place-btn").forEach((btn) =>{
         
-        btn.addEventListener("click", () => {
-            const padName = btn.dataset.pad;       // konum-a ...
-            const padLabel = btn.dataset.place;    // a/b/c/d
-            assignPad(padName, padLabel);
-        });
-    });
-}
+//         btn.addEventListener("click", () => {
+//             const padName = btn.dataset.pad;       // konum-a ...
+//             const padLabel = btn.dataset.place;    // a/b/c/d
+//             assignPad(padName, padLabel);
+//         });
+//     });
+// }
 
 
 //
@@ -222,16 +220,15 @@ async function sendCmd(name, payload=null){
         if(!res.ok){
             const txt = await res.text();
             console.error("Command failed:", name, txt);
-            alert(`Command failed: ${name}
-${txt}`);
+            alert(`Command failed: ${name}${txt}`);
             return;
         }
 
         const data = await res.json();
-
+        
         if (name === 'reset') {
             // Backend reset succeeded -> clear UI pairing state too
-            resetPairingUI();
+            // resetPairingUI();
         }
 
         console.log(`Command ${name} sent:`, data);
@@ -243,32 +240,32 @@ ${txt}`);
 }
 
 
-// send plan butonu icin fonksiyon
-async function sendPlan(){
-    if (pairingOrder.length === 0){
-        alert("Plan is empty. Please do component-pad pairing first.");
-        return;
-    }
-    try{
-        const res = await apiFetch("/api/plan",{
-            method: "POST",
-            body: JSON.stringify({ items: pairingOrder })
-        });
+// // send plan butonu icin fonksiyon
+// async function sendPlan(){
+//     if (pairingOrder.length === 0){
+//         alert("Plan is empty. Please do component-pad pairing first.");
+//         return;
+//     }
+//     try{
+//         const res = await apiFetch("/api/plan",{
+//             method: "POST",
+//             body: JSON.stringify({ items: pairingOrder })
+//         });
 
-        if(!res.ok){
-        const txt = await res.text();
-        alert("Plan send failed.\n" + txt);
-        return;
-        }
+//         if(!res.ok){
+//         const txt = await res.text();
+//         alert("Plan send failed.\n" + txt);
+//         return;
+//         }
 
-        const data = await res.json();
-        alert(`Plan sent successfully. Steps: ${data.count}`);
-    }catch(e){
-        console.warn("Plan send error:", e);
-        alert("Plan send error. Check console.");
-    }
-    await fetchStatus();
-}
+//         const data = await res.json();
+//         alert(`Plan sent successfully. Steps: ${data.count}`);
+//     }catch(e){
+//         console.warn("Plan send error:", e);
+//         alert("Plan send error. Check console.");
+//     }
+//     await fetchStatus();
+// }
 
 
 // baglanti durumu icin
@@ -300,14 +297,14 @@ async function fetchStatus(){
             return;
         const data = await res.json();
 
-        const planCount = (data.plan || []).length;
-        const planTs = data.plan_received_at;
+        // const planCount = (data.plan || []).length;
+        // const planTs = data.plan_received_at;
 
-        if (planCount > 0) {
-        setText("planInfo", `PLAN: LOADED (${planCount})  ${planTs ?? ""}`.trim());
-        } else {
-        setText("planInfo", "PLAN: EMPTY");
-        }
+        // if (planCount > 0) {
+        // setText("planInfo", `PLAN: LOADED (${planCount})  ${planTs ?? ""}`.trim());
+        // } else {
+        // setText("planInfo", "PLAN: EMPTY");
+        // }
 
 
         // robot
@@ -320,11 +317,17 @@ async function fetchStatus(){
         // robot - grbl
         const grbl = data.grbl || {};
         setText("grblState", grbl.state ?? "-");
+
         const mpos = grbl.mpos || {};
         setText("grblX", mpos.x ?? "-");
         setText("grblY", mpos.y ?? "-");
         setText("grblZ", mpos.z ?? "-");
-        setText("grblOk", (grbl.last_ok === true) ? "OK" : (grbl.last_ok === false ? "NO" : "-"));
+
+        setText(
+            "grblOk", 
+            (grbl.last_ok === true) ? "OK" : 
+            (grbl.last_ok === false ? "NO" : "-")
+        );
 
 
         // test
@@ -335,6 +338,32 @@ async function fetchStatus(){
         setText("testUpdated", data.teststation?.last_updated ?? "-");
 
 
+        // program status
+        const prog = data.program || {};
+
+        if (prog.current_label){
+            setText("robotTask", prog.current_label);
+        }
+
+        // fixed program label (if element exists)
+        setText("planInfo", "FIXED PROGRAM");
+
+        // pcb done -> yesil kutular
+        const done = prog.pcb_done || {};
+        const partMap = {
+            R1: "partR1",
+            R2: "partR2",
+            D1: "partD1",
+            D2: "partD2"
+        };
+
+        Object.keys(partMap).forEach((k) => {
+            const el = document.getElementById(partMap[k]);
+            if (!el) return;
+            el.classList.toggle("done", done[k] === true);
+        });
+
+
         // image processing
         const ip = data.image_processing || {};
         const det = ip.last_detection || {};
@@ -343,14 +372,14 @@ async function fetchStatus(){
         setText("visionComponent", det.component ?? "-");
         setText("visionType", det.type ?? "-");
         setText(
-        "visionConf",
-        (typeof det.confidence === "number") ? `${(det.confidence * 100).toFixed(1)}%` : "-"
+            "visionConf",
+            (typeof det.confidence === "number") ? `${(det.confidence * 100).toFixed(1)}%` : "-"
         );
 
         setText("placePad", plc.pad ?? "-");
         setText(
-        "placeAcc",
-        (typeof plc.accuracy === "number") ? `${plc.accuracy.toFixed(1)}%` : "-"
+            "placeAcc",
+            (typeof plc.accuracy === "number") ? `${plc.accuracy.toFixed(1)}%` : "-"
         );
         setText("placeStatus", plc.status ?? "-");
         setText("visionUpdated", ip.last_updated ?? "-");
@@ -365,14 +394,12 @@ async function fetchStatus(){
         // baglanti durumu
         setBadge("badgePi", true, "Pi");
         const conn = data.connections || {};
-
         // motors arduino
         const m = conn.arduino_motors || {};
         setBadge("badgeArduinoMotors", m.status, "Arduino Motors", m.port);
         // teststation arduino
         const t = conn.arduino_teststation || {};
         setBadge("badgeArduinoTest", t.status, "Arduino Test", t.port);
-
         // yeni connection yapisi (object icinde status var)
         const cam = conn.camera || {};
         // badge guncelle
@@ -454,15 +481,24 @@ function bindCommandButtons() {
     const startBtn = document.getElementById("btnStart");
     const stopBtn = document.getElementById("btnStop");
     const resetBtn = document.getElementById("btnReset");
-    const sendPlanBtn = document.getElementById("btnSendPlan");
-
+    // const sendPlanBtn = document.getElementById("btnSendPlan");
     const camReloadBtn = document.getElementById("btnCamReload");
-    if (camReloadBtn) camReloadBtn.addEventListener("click", restartCamera);
+    const btnModeRes = document.getElementById("btnModeRes");
+    const btnModeDio = document.getElementById("btnModeDio");
+    const btnModeNone = document.getElementById("btnModeNone");
+    const btnTestMeasure = document.getElementById("btnTestMeasure");
+
+    
 
     if (startBtn) startBtn.addEventListener("click", () => sendCmd("start"));
     if (stopBtn) stopBtn.addEventListener("click", () => sendCmd("stop"));
     if (resetBtn) resetBtn.addEventListener("click", () => sendCmd("reset"));
-    if (sendPlanBtn) sendPlanBtn.addEventListener("click", sendPlan);   
+    if (camReloadBtn) camReloadBtn.addEventListener("click", restartCamera);
+    if (btnModeRes) btnModeRes.addEventListener("click", () => sendCmd("set_test_mode", { mode: "resistor" }));
+    if (btnModeDio) btnModeDio.addEventListener("click", () => sendCmd("set_test_mode", { mode: "diode" }));
+    if (btnModeNone) btnModeNone.addEventListener("click", () => sendCmd("set_test_mode", { mode: "none" }));
+    if (btnTestMeasure) btnTestMeasure.addEventListener("click", () => sendCmd("test_measure"));
+    // if (sendPlanBtn) sendPlanBtn.addEventListener("click", sendPlan);   
 }
 
 
@@ -471,10 +507,10 @@ document.addEventListener("DOMContentLoaded",  async () =>{
     
     await loadConfig(); // ilk key alinmali
 
-    setSelectedPart(null);
-    renderPairingList();
+    // setSelectedPart(null);
+    // renderPairingList();
 
-    bindUIEvents();
+    // bindUIEvents();
     bindCommandButtons();
 
 
@@ -489,47 +525,47 @@ document.addEventListener("DOMContentLoaded",  async () =>{
 });
 
 
-// reset ve undo butonu
-function resetPairingUI() {
-    setSelectedPart(null);
+// // reset ve undo butonu
+// function resetPairingUI() {
+//     // setSelectedPart(null);
 
-    pairingOrder.length = 0;
-    for(const k of Object.keys(assignments)) delete assignments[k];
+//     pairingOrder.length = 0;
+//     for(const k of Object.keys(assignments)) delete assignments[k];
 
-    document.querySelectorAll('.place-btn').forEach(btn => {
-        const originalLabel = btn.getAttribute('data-place'); // "a", "b", "c", "d"
-        btn.textContent = originalLabel;
-        btn.classList.remove('assigned');
-        btn.disabled = false; // tekrar tiklanabilir
-    });
+//     document.querySelectorAll('.place-btn').forEach(btn => {
+//         const originalLabel = btn.getAttribute('data-place'); // "a", "b", "c", "d"
+//         btn.textContent = originalLabel;
+//         btn.classList.remove('assigned');
+//         btn.disabled = false; // tekrar tiklanabilir
+//     });
 
-    renderPairingList();
+//     // renderPairingList();
 
-    // selected kismini temizleme (setSelectedPart zaten yapar)
-    console.log('[RESET] Pairing UI cleared');
-}
+//     // selected kismini temizleme (setSelectedPart zaten yapar)
+//     console.log('[RESET] Pairing UI cleared');
+// }
 
-function undoLastPairing() {
-    if (pairingOrder.length === 0) {
-        alert("No pairing to undo!");
-        return;
-    }
+// function undoLastPairing() {
+//     if (pairingOrder.length === 0) {
+//         alert("No pairing to undo!");
+//         return;
+//     }
 
-    const lastPair = pairingOrder.pop();
+//     const lastPair = pairingOrder.pop();
 
-    if(lastPair && lastPair.padName){
-        delete assignments[lastPair.padName];
+//     if(lastPair && lastPair.padName){
+//         delete assignments[lastPair.padName];
 
-        // padleri resetleme
-        const placeBtn = document.querySelector(`.place-btn[data-pad="${lastPair.padName}"]`);
-        if (placeBtn) {
-            const originalLabel = placeBtn.getAttribute('data-place');
-            placeBtn.textContent = originalLabel;
-            placeBtn.classList.remove('assigned');
-            placeBtn.disabled = false;
-        }
-    }
+//         // padleri resetleme
+//         const placeBtn = document.querySelector(`.place-btn[data-pad="${lastPair.padName}"]`);
+//         if (placeBtn) {
+//             const originalLabel = placeBtn.getAttribute('data-place');
+//             placeBtn.textContent = originalLabel;
+//             placeBtn.classList.remove('assigned');
+//             placeBtn.disabled = false;
+//         }
+//     }
 
-    renderPairingList();
-    console.log('[UNDO] Last pairing removed:', lastPair);
-}
+//     // renderPairingList();
+//     console.log('[UNDO] Last pairing removed:', lastPair);
+// }

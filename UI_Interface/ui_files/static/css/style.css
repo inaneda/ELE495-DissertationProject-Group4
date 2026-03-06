@@ -3,7 +3,7 @@ File Name       : style.css
 Author          : Eda
 Project         : ELE 495 Dissertation Project - SMD Pick and Place Machine
 Created Date    : 2026-01-24
-Last Modified   : 2026-02-25
+Last Modified   : 2026-03-04
 
 Description:
 This file contains all custom CSS styles for the web-based user interface.
@@ -51,8 +51,8 @@ and academic-project-appropriate user interface.
 
   /* grid'lerin yerlesim plani */
   grid-template-areas:
-    "history    test      plan      pairing"
-    "history    robot     camera    commands";
+    "history    history     test       plan"
+    "robot      camera      camera     commands";
 }
 
 
@@ -63,7 +63,7 @@ and academic-project-appropriate user interface.
 #panel-robot    {grid-area: robot;    }
 #panel-camera   {grid-area: camera;   }
 #panel-commands {grid-area: commands; }
-#panel-pairing  {grid-area: pairing;  }
+/* #panel-pairing  {grid-area: pairing;  } */
 
 /* panellerin genel stili */
 .panel{
@@ -113,8 +113,8 @@ and academic-project-appropriate user interface.
   background: rgba(255, 255, 255, 0.653);
 }
 /* mini kartlarin icerigi icin - test istasyonu paneli */
-.mini-label{ font-size: 12px; color: #444444; }
-.mini-value{ font-size: 16px; font-weight: 700; }
+.mini-label{ font-size: 10px; color: #444444; }
+.mini-value{ font-size: 14px; font-weight: 700; }
 
 
 /* robotun durumu icin */
@@ -151,8 +151,10 @@ and academic-project-appropriate user interface.
 .cmd-start{ background: #b5ebb6; }
 .cmd-stop{ background: #f1afaf; }
 .cmd-reset{ background: #b6d1ff; }
-.cmd-undo  { background: #ffd28a; }
-.cmd-clear { background: #ff8f8f; }
+
+/* .cmd-undo  { background: #ffd28a; }
+.cmd-clear { background: #ff8f8f; } */
+
 /* emergency stop olsun mu?
 .cmd-estop{
   background: #ff4d4d;
@@ -189,20 +191,23 @@ and academic-project-appropriate user interface.
 }
 
 
-/* dizgi plani icin */
+/* dizgi plani icin
 .plan-wrap{
   display: grid;
   grid-template-columns: 90px 1fr;
   gap: 30px;
   height: 100%;
 }
-/* R1 R2 D1 D2 komponentleri ve selected kismi icin*/
+R1 R2 D1 D2 komponentleri ve selected kismi icin
 .plan-parts{
   display: flex;
   flex-direction: column;
   gap: 15px;
   place-items: center;
 }
+ */
+
+
 /* pcb kutusu icin */
 .pcb{
   position: relative;
@@ -221,7 +226,7 @@ and academic-project-appropriate user interface.
   font-weight: 800;
   color: #3d3939;
 }
-/* pcb'deki pad butonlari icin */
+/* pcb'deki pad butonlari icin
 .pad{
   position: absolute;
   padding: 10px 30px;
@@ -232,21 +237,30 @@ and academic-project-appropriate user interface.
   font-weight: 500;
   cursor: pointer;
   transition: filter 0.15s, box-shadow 0.15s, outline 0.15s;
-}
+} */
+
+
 .pad:hover{
   filter: brightness(0.95);
   box-shadow: 0 2px 6px rgba(0,0,0,0.18);
 }
-.pad.selected{
+
+
+/* .pad.selected{
   outline: 3px solid rgba(53, 120, 229, 0.85);
   outline-offset: 2px;
-}
-/* pcb'deki bakir padlerin konumu icin */ 
+} */
+
+
+/* pcb'deki bakir padlerin konumu icin 
 .pad[data-pad="konum-a"]{ top: 40px; left: 18%; }
 .pad[data-pad="konum-b"]{ top: 40px; right: 18%; }
 .pad[data-pad="konum-c"]{ bottom:40px; left: 18%; }
-.pad[data-pad="konum-d"]{ bottom: 40px; right: 18%; }
-/* dizgi sirasi ve yerlestirilecek konumlarin secimi icin butonlarin gorunumu */
+.pad[data-pad="konum-d"]{ bottom: 40px; right: 18%; } 
+*/
+
+
+/* dizgi sirasi ve yerlestirilecek konumlarin secimi icin butonlarin gorunumu 
 .select-btn{
   background: #ffffff;
   border: 1px solid rgba(0,0,0,0.35);
@@ -257,7 +271,10 @@ and academic-project-appropriate user interface.
   cursor: pointer;
   transition: background 0.15s, border-color 0.15s, box-shadow 0.15s;
 }
-.select-btn:hover{
+*/
+
+
+/* .select-btn:hover{
   border-color: #555;
   box-shadow: 0 1px 4px rgba(0,0,0,0.15);
 }
@@ -265,22 +282,23 @@ and academic-project-appropriate user interface.
   background: #cfe5ff;
   border-color: #3578e5;
   color: #102a56;
-}
+} */
 
 
-/* dizgide yapilacak komponent ve pcb pad'i eslestirmesi icin*/
-/* Pick Order - Place Order */
+/* 
+dizgide yapilacak komponent ve pcb pad'i eslestirmesi icin
+Pick Order - Place Order
 .pairing-hint{
   font-size: 12px;
   color: #555555;
   margin-bottom: 8px;
 }
-/* satirlar*/
+satirlar
 .pairing-list{ 
   display: grid;
   gap: 8px;
 }
-/* komponent -> pad iliskisini gostermek icin */
+komponent -> pad iliskisini gostermek icin
 .pairing-row{
   display: grid;
   grid-template-columns: 1fr auto 1fr;
@@ -293,7 +311,7 @@ and academic-project-appropriate user interface.
   background: rgba(255,255,255,0.75);
   font-size: 13px;
 }
-/* oval sekilli gosterim */
+oval sekilli gosterim
 .pairing-pill{
   display: inline-block;
   padding: 2px 10px;
@@ -303,17 +321,18 @@ and academic-project-appropriate user interface.
   background: #fff;
   text-align: center;
 }
-/* ok koyabilmek icin */
+ok koyabilmek icin
 .pairing-arrow{
   opacity: 0.7;
   font-weight: 900;
 }
-/* eslestirme yapilmadiginda */
+eslestirme yapilmadiginda
 .pairing-empty{
   font-size: 13px;
   color: #555;
   opacity: 0.85;
 }
+*/
 
 
 /* kucuk pencere gorunumu icin uyumluluk */
@@ -323,7 +342,7 @@ and academic-project-appropriate user interface.
     grid-template-rows: 1fr 1fr 1fr 600px 1fr 1fr;
     grid-template-areas:
       "plan"
-      "pairing"
+      /* "pairing" */
       "test"
       "commands"
       "camera"
@@ -366,25 +385,25 @@ and academic-project-appropriate user interface.
 }
 
 
-/* send plan butonu icin */
+/* /* send plan butonu icin
 .cmd-plan{
   background: #ffffff;
   color: #111;
   border: 2px solid rgba(0,0,0,0.25);
-}
+} */
 
+/* 
 .cmd-plan:hover{
   background: #f4f4f4;
-}
+} */
 
-/* plan bilgisi icin */
+/* /* plan bilgisi icin
 #planInfo{
   line-height: 1.2;
   opacity: 0.9;
-}
+} */
 
 /* goruntu isleme kartinin gorulebilmesi icin */
-
 #panel-camera .panel-body{
   max-height: 520px;
   overflow-y: auto; /* asagi kaydirma */
@@ -405,4 +424,72 @@ and academic-project-appropriate user interface.
   font-size: 13px;
   margin-top: 10px;
   background: #a8a8a8;
+}
+
+
+/* footer */
+.app-footer{
+    margin-top: 20px;
+    padding: 10px 0;
+    background: #111;
+    color: #ccc;
+    text-align: center;
+    font-size: 13px;
+}
+
+.footer-content{
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.footer-title{
+    font-weight: 500;
+    color: #eee;
+}
+
+.footer-students span{
+    margin: 0 8px;
+}
+
+/* FIXED PLAN PANEL */
+.plan-wrap-fixed{
+    display: grid;
+    grid-template-columns: 120px 1fr;
+    gap: 20px;
+    height: 100%;
+    align-items: stretch;
+}
+
+.parts-grid{
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 12px;
+    align-content: start;
+}
+
+.part-box{
+    border: 2px solid rgba(0, 0, 0, 0.25);
+    border-radius: 10px;
+    padding: 10px 12px;
+    font-weight: 900;
+    text-align: center;
+    background: rgba(255, 255, 255, 0.7);
+    transition: background 0.2s ease, border-color 0.2s ease, transform 0.2s ease;
+}
+
+.part-box.done{
+    background: #b5ebb6;
+    border-color: rgba(0, 0, 0, 0.18);
+    box-shadow: 0 0 6px rgba(0,150,0,0.4);
+}
+
+.pad-static{
+    position: absolute;
+    padding: 10px 30px;
+    border: 1px solid rgba(160, 97, 2, 0.735);
+    background: rgba(255, 160, 16, 0.735);
+    border-radius: 5px;
+    font-size: 12px;
+    font-weight: 700;
 }

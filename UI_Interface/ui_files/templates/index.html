@@ -3,7 +3,7 @@ File Name       : index.html
 Author          : Eda
 Project         : ELE 495 Dissertation Project - SMD Pick and Place Machine
 Created Date    : 2026-01-23
-Last Modified   : 2026-02-01
+Last Modified   : 2026-03-04
 
 Description:
 This file defines the main web-based user interface of the SMD Pick and Place Machine.
@@ -115,31 +115,30 @@ and is styled using Bootstrap and custom CSS.
 
         <!-- sag orta panel - dizgi plani -->
         <section class = "panel panel-blue" id="panel-plan">
-            <div class="panel-title">PNP FILE - Placement Plan</div>
+            <div class="panel-title">PNP FILE - Fixed Plan</div>
             <div class="panel-body">
-                <div class="plan-wrap">
-                    <!-- sol komponent butonlari - R1, R2, D1, D2 -->
-                    <div class="plan-parts">
-                        <button class="select-btn pick-btn" data-pick="d1">D1</button>
-                        <button class="select-btn pick-btn" data-pick="d2">D2</button>
-                        <button class="select-btn pick-btn" data-pick="r1">R1</button>
-                        <button class="select-btn pick-btn" data-pick="r2">R2</button>
-                        <div class="small text-muted mt-2">SELECTED: <b id="selectedPart">-</b></div>   
+                <div class="plan-wrap-fixed">
+                    <!-- R1, R2, D1, D2 -->
+                    <div class="parts-grid">
+                        <div class="part-box" id="partR1">R1</div>
+                        <div class="part-box" id="partR2">R2</div>
+                        <div class="part-box" id="partD1">D1</div>
+                        <div class="part-box" id="partD2">D2</div>
                     </div>
-                    <!-- sag PCB padleri - a, b, c, d -->
+                    <!-- pcb gorunumu -->
                     <div class="pcb">
                         <div class="pcb-title">PCB</div>
-                        <button class="pad place-btn" data-pad="konum-a" data-place="a">a</button>
-                        <button class="pad place-btn" data-pad="konum-b" data-place="b">b</button>
-                        <button class="pad place-btn" data-pad="konum-c" data-place="c">c</button>
-                        <button class="pad place-btn" data-pad="konum-d" data-place="d">d</button>
+                        <div class="pad-static" style="top:40px; left:18%;">A</div>
+                        <div class="pad-static" style="top:40px; right:18%;">B</div>
+                        <div class="pad-static" style="bottom:40px; left:18%;">C</div>
+                        <div class="pad-static" style="bottom:40px; right:18%;">D</div>
                     </div> 
                 </div>
             </div>
         </section>
         
 
-        <!-- sag ust panel - komponent-pad eslestirmesinin gosterimi -->
+        <!-- sag ust panel - komponent-pad eslestirmesinin gosterimi
          <section class = "panel panel-pink" id="panel-pairing">
             <div class="panel-title">PAIRING</div>
             <div class="panel-body">
@@ -148,7 +147,7 @@ and is styled using Bootstrap and custom CSS.
                     <div class="pairing-empty">Component and pad mapping has not been done yet.</div>
                 </div>
             </div>
-        </section>
+        </section> -->
 
 
         <!-- orta alt sol panel - makine durumu -->
@@ -235,13 +234,6 @@ and is styled using Bootstrap and custom CSS.
                 <button type="button" class="cmd-btn cmd-start" id="btnStart">START</button>
                 <button type="button" class="cmd-btn cmd-stop" id="btnStop">STOP</button>
                 <button type="button" class="cmd-btn cmd-reset" id="btnReset">RESET</button>
-                <button type="button" class="cmd-btn cmd-plan" id="btnSendPlan">SEND PLAN</button>
-                
-                <button type="button" class="cmd-btn cmd-undo" onclick="undoLastPairing()">UNDO</button>
-                <button type="button" class="cmd-btn cmd-clear" onclick="resetPairingUI()">CLEAR</button>
-                
-                <div class="small text-muted text-center" id="planInfo">PLAN: -</div>
-
             </div>
         </section>
         
@@ -251,8 +243,17 @@ and is styled using Bootstrap and custom CSS.
 
 <!-- footer-->
 <footer class="app-footer">
-    <div class="container-fluid px-3 py-2 text-center small text-muted">
-        student info.s - date - ?  
+    <div class="footer-content">
+        <div class="footer-title">
+            ELE495 Dissertation Project – SMD Pick & Place Machine
+        </div>
+
+        <div class="footer-students">
+            <span>Mustafa Buğrahan Özgün - 211201037</span>
+            <span>Mert Şenel - 211201081</span>
+            <span>Eda İnan - 221201076</span>
+            <span>Ayşenur Kurt - 221401019</span>
+        </div>
     </div>
 </footer>
     <!-- fonksiyon -->

@@ -37,8 +37,23 @@ SYSTEM_STATE = {
         "z": 0
     },
 
+    "program": {
+        "running": False,
+        "paused": False,
+        "current_step": 0,
+        "total_steps": 0,
+        "current_label": "-",
+        "vacuum_on": False,
+        "pcb_done": {
+            "R1": False,
+            "R2": False,
+            "D1": False,
+            "D2": False,
+        },
+    },
+
     "grbl": {
-        "state": "idle",                 # Idle/Run/Hold/Alarm
+        "state": "unknown",                 # Idle/Run/Hold/Alarm
         "mpos": {"x": 0.0, "y": 0.0, "z": 0.0},
         "last_ok": None,                 # True/False/None
         "last_line": None,               # son gcode satırı - demo
@@ -53,19 +68,17 @@ SYSTEM_STATE = {
         "last_updated": None
     },
 
-    "logs": [
-        "Backend started (demo mode)"
-    ],
+    "logs": [],
 
     "image_processing": {
         "last_detection": {
             "component": None,      # R1, R2, D1, D2
             "type": None,           # R, D
-            "confidence": 0.0       # 0 - 1
+            "confidence": None       # 0 - 1
         },
         "last_placement": {         # yerlestirme dogrulaması
             "pad": None,            # a, b, c, d
-            "accuracy": 0.0,        # dogruluk 0 -100
+            "accuracy": None,        # dogruluk 0 -100
             "status": "unknown"
         },
         "last_updated": None
@@ -85,11 +98,6 @@ SYSTEM_STATE = {
         "port": None
         }
     },
-    
-    "plan": [],
-
-    "plan_received_at": None
-}
 
 # sistemin su anki durumunu alir : GET
 @router.get("/")
