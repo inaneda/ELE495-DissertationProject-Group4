@@ -98,6 +98,7 @@ SYSTEM_STATE = {
         "port": None
         }
     },
+}
 
 # sistemin su anki durumunu alir : GET
 @router.get("/")
