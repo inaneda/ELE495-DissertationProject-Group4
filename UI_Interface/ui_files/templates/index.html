@@ -106,9 +106,9 @@ and is styled using Bootstrap and custom CSS.
                         <div class="text-muted small">UPDATE: <span id="testUpdated">-</span></div>
                     </div>
                 </div>
-                <div class="test-actions">
+                <!-- <div class="test-actions">
                     <button class="btn btn-mode" onclick="sendCmd('test_measure')">MEASURE</button>
-                </div>
+                </div> -->
             </div>
         </section>
 
@@ -148,7 +148,53 @@ and is styled using Bootstrap and custom CSS.
                 </div>
             </div>
         </section> -->
+        <!-- sag ust panel - komponent-deger eslestirmesinin gosterimi-->
+        <section class = "panel panel-pink" id="panel-measurements">
+            <div class="panel-title">MEASUREMENTS</div>
+            <div class="panel-body">
+                <div id="measurementList" class="pairing-list">
+                    <div class="pairing-row">
+                        <div class="pairing-left">R1</div>
+                        <div class="pairing-pill" id="meas-R1">-</div>
+                    </div>
 
+                    <div class="pairing-row">
+                        <div class="pairing-left">R2</div>
+                        <div class="pairing-pill" id="meas-R2">-</div>
+                    </div>
+
+                    <div class="pairing-row">
+                        <div class="pairing-left">D1</div>
+                        <div class="pairing-pill" id="meas-D1">-</div>
+                    </div>
+
+                    <div class="pairing-row">
+                        <div class="pairing-left">D2</div>
+                        <div class="pairing-pill" id="meas-D2">-</div>
+                    </div>
+
+                    <div class="pairing-row">
+                        <div class="pairing-left">R3</div>
+                        <div class="pairing-pill" id="meas-R3">-</div>
+                    </div>
+
+                    <div class="pairing-row">
+                        <div class="pairing-left">R4</div>
+                        <div class="pairing-pill" id="meas-R4">-</div>
+                    </div>
+
+                    <div class="pairing-row">
+                        <div class="pairing-left">R5</div>
+                        <div class="pairing-pill" id="meas-R5">-</div>
+                    </div>
+
+                    <div class="pairing-row">
+                        <div class="pairing-left">R6</div>
+                        <div class="pairing-pill" id="meas-R6">-</div>
+                    </div>
+                </div>
+            </div>
+        </section>
 
         <!-- orta alt sol panel - makine durumu -->
         <section class = "panel panel-purple" id="panel-robot">
@@ -184,7 +230,7 @@ and is styled using Bootstrap and custom CSS.
             <div class="panel-body">
                 <!-- baglanti durumlari-->
                 <div class="conn-badges mb-2">
-                    <span class="badge text-bg-secondary" id="badgePi">RaspberryPi: ?</span>
+                    <span class="badge text-bg-secondary" id="badgePi">Server: ?</span>
                     <span class="badge text-bg-secondary" id="badgeArduinoMotors">Arduino Motors: ?</span>
                      <span class="badge text-bg-secondary" id="badgeArduinoTest">Arduino Test: ?</span>
                     <span class="badge text-bg-secondary" id="badgeCamera">Camera: ?</span>
@@ -231,9 +277,15 @@ and is styled using Bootstrap and custom CSS.
         <section class="panel panel-gray" id="panel-commands">
             <div class="panel-title">COMMANDS</div>
             <div class="panel-body d-flex flex-column align-items-center gap-3">
+                
                 <button type="button" class="cmd-btn cmd-start" id="btnStart">START</button>
+                
                 <button type="button" class="cmd-btn cmd-stop" id="btnStop">STOP</button>
+                
                 <button type="button" class="cmd-btn cmd-reset" id="btnReset">RESET</button>
+                
+                <!-- <button type="button" class="cmd-btn cmd-manual" id="btnManualTest">MANUAL TEST</button> -->
+            
             </div>
         </section>
         
@@ -249,7 +301,7 @@ and is styled using Bootstrap and custom CSS.
         </div>
 
         <div class="footer-students">
-            <span>Mustafa Buğrahan Özgün - 211201037</span>
+            <span>Mustafa Buğrahan Özgün - 211201065</span>
             <span>Mert Şenel - 211201081</span>
             <span>Eda İnan - 221201076</span>
             <span>Ayşenur Kurt - 221401019</span>

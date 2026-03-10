@@ -239,6 +239,8 @@ async function sendCmd(name, payload=null){
     }
 }
 
+// manual test icin fonk.
+
 
 // // send plan butonu icin fonksiyon
 // async function sendPlan(){
@@ -337,6 +339,10 @@ async function fetchStatus(){
         setText("testResult", data.teststation?.last_result ?? "-");
         setText("testUpdated", data.teststation?.last_updated ?? "-");
 
+        // measurements
+        if (data.measurements) {
+            updateMeasurements(data.measurements)
+        }
 
         // program status
         const prog = data.program || {};
@@ -392,7 +398,7 @@ async function fetchStatus(){
 
 
         // baglanti durumu
-        setBadge("badgePi", true, "Pi");
+        setBadge("badgePi", data.mode !== "DEMO", "Server");
         const conn = data.connections || {};
         // motors arduino
         const m = conn.arduino_motors || {};
@@ -414,8 +420,12 @@ async function fetchStatus(){
         const camImg = document.getElementById("cameraImg");
         const camPh = document.getElementById("cameraPlaceholder");
 
-         // summary
-        document.getElementById("connSummary").textContent = "local network (demo)";
+        // summary
+        if (data.mode === "DEMO") {
+            connSummary.innerText = "Demo mode";
+        } else {
+            connSummary.innerText = "Local network";
+        }
     
         if (camImg && camPh){
             if(camOk){
@@ -429,7 +439,7 @@ async function fetchStatus(){
         }
     }catch(e){
         console.warn("Status fetch error:", e);
-        setBadge("badgePi", false, "Pi");
+        setBadge("badgePi", false, "Server");
         setBadge("badgeArduinoMotors", null, "Arduino Motors");
         setBadge("badgeArduinoTest", null, "Arduino Test");
         setBadge("badgeCamera", null, "Camera");
@@ -486,8 +496,8 @@ function bindCommandButtons() {
     const btnModeRes = document.getElementById("btnModeRes");
     const btnModeDio = document.getElementById("btnModeDio");
     const btnModeNone = document.getElementById("btnModeNone");
-    const btnTestMeasure = document.getElementById("btnTestMeasure");
-
+    // const btnTestMeasure = document.getElementById("btnTestMeasure");
+    // const btnManualTest = document.getElementById("btnManualTest");
     
 
     if (startBtn) startBtn.addEventListener("click", () => sendCmd("start"));
@@ -497,8 +507,9 @@ function bindCommandButtons() {
     if (btnModeRes) btnModeRes.addEventListener("click", () => sendCmd("set_test_mode", { mode: "resistor" }));
     if (btnModeDio) btnModeDio.addEventListener("click", () => sendCmd("set_test_mode", { mode: "diode" }));
     if (btnModeNone) btnModeNone.addEventListener("click", () => sendCmd("set_test_mode", { mode: "none" }));
-    if (btnTestMeasure) btnTestMeasure.addEventListener("click", () => sendCmd("test_measure"));
-    // if (sendPlanBtn) sendPlanBtn.addEventListener("click", sendPlan);   
+    // if (btnTestMeasure) btnTestMeasure.addEventListener("click", () => sendCmd("test_measure"));
+    // if (sendPlanBtn) sendPlanBtn.addEventListener("click", sendPlan);
+    // if (btnManualTest) btnManualTest.addEventListener("click", () => sendCmd("manual_test"));
 }
 
 
@@ -523,6 +534,27 @@ document.addEventListener("DOMContentLoaded",  async () =>{
     setInterval(refreshCamera, 1000); // 1 FPS
     refreshCamera();
 });
+
+// measurement verisi
+function updateMeasurements(meas) {
+
+    const comps = ["R1","R2","D1","D2","R3","R4","R5","R6"]
+
+    comps.forEach(c => {
+
+        const el = document.getElementById("meas-" + c)
+        if (!el) return
+
+        const val = meas[c]
+
+        if (!val || val === null) {
+            el.textContent = "-"
+        } else {
+            el.textContent = val
+        }
+
+    })
+}
 
 
 // // reset ve undo butonu

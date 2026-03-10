@@ -68,6 +68,17 @@ SYSTEM_STATE = {
         "last_updated": None
     },
 
+    "measurements": {
+        "R1": None,
+        "R2": None,
+        "D1": None,
+        "D2": None,
+        "R3": None,
+        "R4": None,
+        "R5": None,
+        "R6": None
+    },
+
     "logs": [],
 
     "image_processing": {

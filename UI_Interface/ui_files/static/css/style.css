@@ -51,7 +51,7 @@ and academic-project-appropriate user interface.
 
   /* grid'lerin yerlesim plani */
   grid-template-areas:
-    "history     test       plan       commands"
+    "history     test       plan       measurements"
     "history     robot      camera     commands";
 }
 
@@ -63,6 +63,7 @@ and academic-project-appropriate user interface.
 #panel-robot    {grid-area: robot;    }
 #panel-camera   {grid-area: camera;   }
 #panel-commands {grid-area: commands; }
+#panel-measurements {grid-area: measurements;}
 /* #panel-pairing  {grid-area: pairing;  } */
 
 /* panellerin genel stili */
@@ -151,6 +152,7 @@ and academic-project-appropriate user interface.
 .cmd-start{ background: #b5ebb6; }
 .cmd-stop{ background: #f1afaf; }
 .cmd-reset{ background: #b6d1ff; }
+.cmd-manual{ background: #aeddd8; }
 
 /* .cmd-undo  { background: #ffd28a; }
 .cmd-clear { background: #ff8f8f; } */
@@ -285,33 +287,37 @@ R1 R2 D1 D2 komponentleri ve selected kismi icin
 } */
 
 
-/* 
+/*
 dizgide yapilacak komponent ve pcb pad'i eslestirmesi icin
 Pick Order - Place Order
 .pairing-hint{
   font-size: 12px;
   color: #555555;
   margin-bottom: 8px;
-}
-satirlar
+} */
+
+/* satirlar */
 .pairing-list{ 
-  display: grid;
-  gap: 8px;
+  max-height: 240px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
 }
-komponent -> pad iliskisini gostermek icin
+
+/* komponent -> deger iliskisini gostermek icin */
 .pairing-row{
   display: grid;
-  grid-template-columns: 1fr auto 1fr;
+  grid-template-columns: 1fr auto;
   gap: 8px;
   align-items: center;
-
   padding: 8px 10px;
   border-radius: 8px;
   border: 1px solid rgba(0,0,0,0.12);
   background: rgba(255,255,255,0.75);
   font-size: 13px;
 }
-oval sekilli gosterim
+/* oval sekilli gosterim */
 .pairing-pill{
   display: inline-block;
   padding: 2px 10px;
@@ -321,19 +327,17 @@ oval sekilli gosterim
   background: #fff;
   text-align: center;
 }
-ok koyabilmek icin
+/* ok koyabilmek icin */
 .pairing-arrow{
   opacity: 0.7;
   font-weight: 900;
 }
-eslestirme yapilmadiginda
+/* eslestirme yapilmadiginda */
 .pairing-empty{
   font-size: 13px;
   color: #555;
   opacity: 0.85;
 }
-*/
-
 
 /* kucuk pencere gorunumu icin uyumluluk */
 @media (max-width: 1100px){
@@ -342,6 +346,7 @@ eslestirme yapilmadiginda
     grid-template-rows: 1fr 1fr 1fr 600px 1fr 1fr;
     grid-template-areas:
       "plan"
+      "measurements"
       /* "pairing" */
       "test"
       "commands"

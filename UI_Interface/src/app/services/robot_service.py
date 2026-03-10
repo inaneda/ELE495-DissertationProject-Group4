@@ -27,6 +27,9 @@ class RobotService:
         self._thread: threading.Thread | None = None
         self._stop_event = threading.Event()
 
+        # serial access senkronizasyonu
+        self._serial_lock = threading.Lock()
+
         # grbl - sadece real mode'da
         self.ser = None
 
@@ -104,79 +107,151 @@ class RobotService:
     def send_gcode(self, gcode: str) -> bool:
         """
         Send G-code command to GRBL (REAL mode) or simulate (DEMO mode)
+
+        IMPORTANT:
+        GRBL 'ok' means command accepted, not necessarily motion finished.
+        Motion completion must be handled separately via wait_until_idle().
         """
+        gcode = (gcode or "").strip()
+        if not gcode:
+            return True
+
         if self.demo_mode:
-            # demo:
             print(f"[ROBOT DEMO] G-code: {gcode}")
             time.sleep(0.05)
             return True
-        
+
         if not self.ser:
             print("[ROBOT] Not connected to GRBL")
             self.status = "disconnected"
             return False
-        
+
         try:
-            self.ser.write((gcode.strip() + "\n").encode("utf-8"))
-            
-            # grbl'den "ok" bilgisini bekleme
-            deadline = time.time() + 1.5
-            while time.time() < deadline:
-                line = self._safe_readline()
-                if not line:
-                    continue
+            with self._serial_lock:
+                self.ser.write((gcode + "\n").encode("utf-8"))
 
-                # basarili
-                if line.lower().startswith("ok"):
-                    print(f"[ROBOT] G-code ok: {gcode}")
-                    return True
+                # deadline = time.time() + 2.0
+                # while time.time() < deadline:
+                #     line = self._safe_readline()
+                #     if not line:
+                #         continue
 
-                # hatali: format: "error:xx"
-                if line.lower().startswith("error") or "alarm" in line.lower():
-                    print(f"[ROBOT] G-code error for '{gcode}': {line}")
-                    self.status = "alarm"
-                    return False
-                
-            print(f"[ROBOT] Timeout waiting ok for: {gcode}")
-            return False    
-        
+                #     lower = line.lower()
+
+                #     if lower.startswith("ok"):
+                #         print(f"[ROBOT] G-code ok: {gcode}")
+                #         return True
+
+                #     if lower.startswith("error") or "alarm" in lower:
+                #         print(f"[ROBOT] G-code error for '{gcode}': {line}")
+                #         self.status = "alarm"
+                #         return False
+
+                deadline = time.time() + 2.0
+                while time.time() < deadline:
+                    response = self._safe_readline()
+                    if not response:
+                        continue
+
+                    print(f"[ROBOT] Response for '{gcode}': {response}")
+
+                    lower = response.lower()
+
+                    if lower.startswith("ok"):
+                        return True
+
+                    if lower.startswith("error") or lower.startswith("alarm") or "alarm" in lower:
+                        print(f"[ROBOT] G-code failed: {gcode} -> {response}")
+
+                        if lower.startswith("alarm") or "alarm" in lower:
+                            self.status = "alarm"
+                        else:
+                            self.status = "error"
+
+                        return False
+
+                print(f"[ROBOT] Timeout waiting ok for: {gcode}")
+                self.status = "error"
+                return False
+
         except Exception as e:
             print(f"[ROBOT] Send error: {e}")
             self.status = "error"
             return False
     
-    def query_status(self) -> Dict[str, Any]: 
+    def query_status(self) -> Dict[str, Any]:
         """Query GRBL status or return simulated status"""
         if self.demo_mode:
-            # demo:
             return {
                 "status": self.status,
                 "x": self.position["x"],
                 "y": self.position["y"],
-                "z": self.position["z"]
+                "z": self.position["z"],
             }
-        
+
         if not self.ser:
             return {"status": "disconnected", "x": 0, "y": 0, "z": 0}
-        
+
         try:
-            # durum bilgisini almak icin grbl'e sor
-            self.ser.write(b'?\n')
-            
-            # grbl yaniti formati: <Idle|MPos:...,...,...|FS:...>
-            # <...> bu bicimi gorene kadar okuma yapilmali
-            for _ in range(8):
-                line = self._safe_readline()
-                if not line:
-                    continue
-                if line.startswith("<"):
-                    return self._parse_grbl_status(line)
-            return {"status": "unknown", "x": 0.0, "y": 0.0, "z": 0.0}
-        
+            with self._serial_lock:
+                self.ser.write(b"?\n")
+
+                for _ in range(8):
+                    line = self._safe_readline()
+                    if not line:
+                        continue
+                    if line.startswith("<"):
+                        parsed = self._parse_grbl_status(line)
+                        self.status = parsed["status"]
+                        self.position["x"] = parsed["x"]
+                        self.position["y"] = parsed["y"]
+                        self.position["z"] = parsed["z"]
+                        return parsed
+
+            return {
+                "status": "unknown",
+                "x": self.position.get("x", 0.0),
+                "y": self.position.get("y", 0.0),
+                "z": self.position.get("z", 0.0),
+            }
+
         except Exception as e:
             print(f"[ROBOT] Query error: {e}")
+            self.status = "error"
             return {"status": "error", "x": 0, "y": 0, "z": 0}
     
+    # her komuttan sonra grbl status Idle'sini oku
+    def wait_until_idle(self, timeout: float = 20.0, poll_interval: float = 0.05) -> bool:
+        """
+        Wait until GRBL becomes Idle.
+
+        Use this after motion commands because 'ok' only means accepted,
+        not physically finished.
+        """
+        if self.demo_mode:
+            time.sleep(0.05)
+            self.status = "idle"
+            return True
+
+        deadline = time.time() + timeout
+        while time.time() < deadline:
+            data = self.query_status()
+            state = str(data.get("status", "")).lower()
+
+            if state == "idle":
+                self.status = "idle"
+                return True
+
+            if state in {"alarm", "error", "disconnected"}:
+                self.status = state
+                print(f"[ROBOT] wait_until_idle aborted, state={state}")
+                return False
+
+            time.sleep(poll_interval)
+
+        print("[ROBOT] Timeout waiting for idle")
+        self.status = "error"
+        return False
 
     # grbl bilgisi (text biciminde) -> arayuz icin anlamli olabilmesi icin JSON olmali
     def _parse_grbl_status(self, line: str) -> Dict[str, Any]:
@@ -184,7 +259,7 @@ class RobotService:
         Parse GRBL status line
         Example: <Idle|MPos:...,...,...|FS:...>
         """
-        result = {"status": "unknown", "x": 0, "y": 0, "z": 0}
+        result = {"status": "unknown", "x": 0.0, "y": 0.0, "z": 0.0}
         
         # grbl durum (Idle/Run/Hold/Alarm)
         match = re.search(r'<(\w+)\|', line)
@@ -200,6 +275,7 @@ class RobotService:
         
         return result
     
+
     # polling
     def start_polling(self) -> None:
         """Start background status polling"""
@@ -225,8 +301,8 @@ class RobotService:
         
         # arduino - nema17 (GRBL) baglanti durumu
         if self.demo_mode:
-            SYSTEM_STATE["connections"]["arduino_motors"]["status"] = True
-            SYSTEM_STATE["connections"]["arduino_motors"]["port"] = self.port  # demo'da port string dursun
+            SYSTEM_STATE["connections"]["arduino_motors"]["status"] = False # True
+            SYSTEM_STATE["connections"]["arduino_motors"]["port"] = None # self.port  # demo'da port string dursun
         else:
             SYSTEM_STATE["connections"]["arduino_motors"]["status"] = self.ser is not None
             SYSTEM_STATE["connections"]["arduino_motors"]["port"] = self.port if self.ser is not None else None
@@ -308,10 +384,10 @@ class RobotService:
 
 robot_service = None
 
-def init_robot_service(demo_mode: bool, port: str = "/dev/ttyACM0"):
+def init_robot_service(demo_mode: bool, port: str = "/dev/ttyACM0", baudrate: int = 115200):
     """Initialize robot service singleton"""
     global robot_service
-    robot_service = RobotService(demo_mode=demo_mode, port=port)
+    robot_service = RobotService(demo_mode=demo_mode, port=port, baudrate=baudrate)
     return robot_service
     
 

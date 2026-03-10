@@ -112,16 +112,6 @@ class GCodeRunner:
         if self._thread and self._thread.is_alive():
             self._thread.join(timeout=1.5)
 
-        try:
-            from src.app.main import robot_service
-            if robot_service is not None:
-                # Vacuum OFF
-                robot_service.send_gcode("M9")
-                # home'a gitmek istiyorsak asagidakini yaz:
-                # robot_service.send_gcode("...HOME GCODE...")
-        except Exception as e:
-            self._log(f"GCodeRunner reset safety actions failed: {e}")
-
         self.current_step_idx = 0
         self.vacuum_on = False
 
@@ -138,6 +128,9 @@ class GCodeRunner:
         # pcb tamamlamasini sifirlama
         for k in SYSTEM_STATE["program"]["pcb_done"].keys():
             SYSTEM_STATE["program"]["pcb_done"][k] = False
+        # komponent deger eslestirmesini sifirlama
+        for k in SYSTEM_STATE["measurements"].keys():
+            SYSTEM_STATE["measurements"][k] = None
 
         self._log("GCodeRunner: RESET done")
         self._thread = None
@@ -155,6 +148,9 @@ class GCodeRunner:
 
     def _send_many(self, robot, lines: list[str]) -> bool:
         from src.app.routers.status import SYSTEM_STATE
+
+        # hangi gcode'lar hareket sayiliyor
+        motion_prefixes = ("G0", "G00", "G1", "G01", "G2", "G02", "G3", "G03", "G38")
 
         for line in lines:
             if not self._wait_if_paused():
@@ -178,6 +174,18 @@ class GCodeRunner:
                 SYSTEM_STATE["program"]["running"] = False
                 SYSTEM_STATE["program"]["paused"] = False
                 return False
+            
+            # !!
+            upper = line.upper()
+            if upper.startswith(motion_prefixes):
+                idle_ok = robot.wait_until_idle(timeout=20.0)
+                if not idle_ok:
+                    self._log(f"Robot did not become idle after: {line}")
+                    SYSTEM_STATE["robot"]["status"] = "error"
+                    SYSTEM_STATE["robot"]["current_task"] = "Motion wait error"
+                    SYSTEM_STATE["program"]["running"] = False
+                    SYSTEM_STATE["program"]["paused"] = False
+                    return False
 
         return True
     
@@ -276,7 +284,144 @@ class GCodeRunner:
 
 
     # test station
-    def _run_test_measure(self) -> None:
+    # komponent ve deger eslestirmesi icin
+    def _format_measurement_text(self, comp: str, data: dict) -> str:
+        mode = str(data.get("mode", "")).lower()
+        value_text = str(data.get("value_text", "-")).strip()
+        result = str(data.get("result", "-")).strip().upper()
+
+        if comp.startswith("R"):
+            return value_text if value_text else "-"
+
+        if comp.startswith("D"):
+            if result in {"OPEN", "OK"}:
+                return "OPEN"
+            return "NOT OPEN"
+
+        return value_text if value_text else "-"
+    
+    
+    def _write_measurement_for_component(self, comp: str, data: dict) -> None:
+        from src.app.routers.status import SYSTEM_STATE
+
+        if comp not in SYSTEM_STATE["measurements"]:
+            return
+
+        SYSTEM_STATE["measurements"][comp] = self._format_measurement_text(comp, data)
+
+    # buton kalkti gerek yok
+    def _write_manual_resistor_measurement(self, data: dict) -> str | None:
+        from src.app.routers.status import SYSTEM_STATE
+
+        for comp in ["R3", "R4", "R5", "R6"]:
+            if not SYSTEM_STATE["measurements"].get(comp):
+                SYSTEM_STATE["measurements"][comp] = self._format_measurement_text(comp, data)
+                return comp
+
+        return None
+    
+    def _extract_component_from_step(self, step_id: str) -> str | None:
+        if "_" not in step_id:
+            return None
+
+        comp = step_id.split("_")[0].strip().upper()
+        if comp in {"R1", "R2", "D1", "D2", "R3", "R4", "R5", "R6"}:
+            return comp
+
+        return None
+    
+    # buton kalkti gerek yok
+    # manuel butonu ile ek direnc olcumu
+    def _next_manual_resistor_component(self) -> str | None:
+        from src.app.routers.status import SYSTEM_STATE
+
+        for comp in ["R3", "R4", "R5", "R6"]:
+            if not SYSTEM_STATE["measurements"].get(comp):
+                return comp
+
+        return None
+
+    # buton kalkti gerek yok
+    def _manual_component_gcode_keys(self, comp: str) -> tuple[str, str]:
+        comp = (comp or "").strip().upper()
+        return (f"{comp}_FEEDER_MOVE", f"{comp}_PICK_Z")
+    
+    # buton kalkti gerek yok
+    def _build_manual_test_lines(self, comp: str) -> list[str]:
+        from src.app.services.gcode_programs import GCODE
+
+        move_key, pick_key = self._manual_component_gcode_keys(comp)
+
+        lines: list[str] = []
+
+        # komponentin yanina git
+        feeder_move = GCODE.get(move_key, "")
+        if feeder_move:
+            lines.extend([s.strip() for s in str(feeder_move).split(";") if s.strip()])
+
+        # pick z hareketi
+        pick_z = GCODE.get(pick_key, "")
+        if pick_z:
+            lines.extend([s.strip() for s in str(pick_z).split(";") if s.strip()])
+
+        # test istasyonuna git
+        move_test = GCODE.get("MOVE_TEST", "")
+        if move_test:
+            lines.extend([s.strip() for s in str(move_test).split(";") if s.strip()])
+
+        # test baskisi
+        test_press = GCODE.get("TEST_PRESS_DWELL", "")
+        if test_press:
+            lines.extend([s.strip() for s in str(test_press).split(";") if s.strip()])
+
+        # tekrar ayni komponent konumuna don
+        if feeder_move:
+            lines.extend([s.strip() for s in str(feeder_move).split(";") if s.strip()])
+
+        return lines
+    # buton kalkti gerek yok
+    def run_manual_test_cycle(self) -> bool:
+        from src.app.routers.status import SYSTEM_STATE
+        from src.app.main import robot_service
+
+        if robot_service is None:
+            self._log("Manual test failed: Robot service not initialized")
+            return False
+
+        comp = self._next_manual_resistor_component()
+        if comp is None:
+            self._log("Manual test skipped: R3-R6 already full")
+            return False
+
+        lines = self._build_manual_test_lines(comp)
+        if not lines:
+            self._log(f"Manual test failed: No G-code lines for {comp}")
+            return False
+
+        SYSTEM_STATE["robot"]["status"] = "running"
+        SYSTEM_STATE["robot"]["current_task"] = f"Manual test {comp}"
+
+        self._log(f"Manual test started for {comp}")
+
+        ok = self._send_many(robot_service, lines)
+        if not ok:
+            self._log(f"Manual test motion failed for {comp}")
+            SYSTEM_STATE["robot"]["status"] = "error"
+            SYSTEM_STATE["robot"]["current_task"] = "Manual test error"
+            return False
+
+        # hareket bittikten sonra manuel olcum al
+        self._run_test_measure(step_id=None, manual=True)
+
+        SYSTEM_STATE["robot"]["status"] = "idle"
+        SYSTEM_STATE["robot"]["current_task"] = "-"
+
+        self._log(f"Manual test finished for {comp}")
+        return True
+    
+    # ---------------------------------------------------------------- 
+    # ---------------------------------------------------------------- 
+    def _run_test_measure(self, step_id: str | None = None, manual: bool = False) -> None:
         """
         Test istasyonu adimindan sonra Arduino olcumunu tetikler
         ve SYSTEM_STATE["teststation"] icini gunceller.
@@ -297,7 +442,33 @@ class GCodeRunner:
             SYSTEM_STATE["teststation"]["last_result"] = data.get("result", "UNKNOWN")
             SYSTEM_STATE["teststation"]["last_updated"] = time.strftime("%Y-%m-%d %H:%M:%S")
 
-            self._log(f"Test measurement done: {data.get('result', 'UNKNOWN')}")
+            written_to = None
+
+            comp = self._extract_component_from_step(step_id or "")
+            if comp:
+                self._write_measurement_for_component(comp, data)
+                written_to = comp
+
+            # buton kalkti gerek yok
+            # if manual:
+            #     mode = str(data.get("mode", "")).lower()
+            #     if mode == "resistor":
+            #         written_to = self._write_manual_resistor_measurement(data)
+            #         if written_to is None:
+            #             self._log("Manual resistor measurement skipped: R3-R6 already full")
+            #     else:
+            #         self._log("Manual measurement received but not resistor; R3-R6 not updated")
+            # else:
+            #     comp = self._extract_component_from_step(step_id or "")
+            #     if comp:
+            #         self._write_measurement_for_component(comp, data)
+            #         written_to = comp
+
+            if written_to:
+                self._log(f"Test measurement done: {written_to} = {SYSTEM_STATE['measurements'][written_to]}")
+            else:
+                self._log(f"Test measurement done: {data.get('result', 'UNKNOWN')}")
+
         except Exception as e:
             self._log(f"Test measurement failed: {e}")
 
@@ -351,10 +522,11 @@ class GCodeRunner:
             if step.id.endswith("_PICK_Z"):
                 self._run_pick_vision(step.id)
 
-
+            
+            # TEST ISTASYONU OLCUM YAPMA -> z ekseninde baskı step'inde calisiyor 
             # TEST sonrasi arduino olcumu
             if step.id.endswith("_TEST_PRESS"):
-                self._run_test_measure()
+                self._run_test_measure(step.id, manual=False)
 
 
             # vision

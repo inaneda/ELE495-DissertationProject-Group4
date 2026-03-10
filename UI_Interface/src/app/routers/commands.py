@@ -100,20 +100,38 @@ def post_command(cmd: CommandRequest):
         _log(f"Command received: SET_TEST_MODE ({mode})")
         return {"ok": True, "message": f"Test mode set to {mode}"}
     
-    if name == "test_measure":
-        from src.app.main import arduino_service
-        if arduino_service is None:
-            raise HTTPException(status_code=500, detail="Arduino service not initialized")
+    # buton kalkti gerek yok
+    # komponent olcumleri
+    # if name == "test_measure":
+    #     gcode_runner._run_test_measure(step_id=None, manual=True)
+    #     _log("Command received: TEST_MEASURE")
+    #     return {"ok": True, "message": "Manual measurement completed"}
+    
+    # buton kalkti gerek yok
+    # manuel test icin hareket
+    # if name == "manual_test":
+    #     ok = gcode_runner.run_manual_test_cycle()
 
-        data = arduino_service.measure()
-        SYSTEM_STATE["teststation"]["mode"] = data.get("mode", "none")
-        SYSTEM_STATE["teststation"]["last_adc"] = data.get("value_text", "-")   # eskiden adc'ydi artik VALUE TEXT
-        SYSTEM_STATE["teststation"]["last_voltage_v"] = data.get("voltage", 0.0)
-        SYSTEM_STATE["teststation"]["last_result"] = data.get("result", "UNKNOWN")
-        SYSTEM_STATE["teststation"]["last_updated"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    #     if not ok:
+    #         raise HTTPException(status_code=400, detail="Manual test could not be completed")
 
-        _log("Command received: TEST_MEASURE")
-        return {"ok": True, "data": data}
+    #     _log("Command received: MANUAL_TEST")
+    #     return {"ok": True, "message": "Manual test completed"}
+    
+    # if name == "test_measure":
+    #     from src.app.main import arduino_service
+    #     if arduino_service is None:
+    #         raise HTTPException(status_code=500, detail="Arduino service not initialized")
+
+    #     data = arduino_service.measure()
+    #     SYSTEM_STATE["teststation"]["mode"] = data.get("mode", "none")
+    #     SYSTEM_STATE["teststation"]["last_adc"] = data.get("value_text", "-")   # eskiden adc'ydi artik VALUE TEXT
+    #     SYSTEM_STATE["teststation"]["last_voltage_v"] = data.get("voltage", 0.0)
+    #     SYSTEM_STATE["teststation"]["last_result"] = data.get("result", "UNKNOWN")
+    #     SYSTEM_STATE["teststation"]["last_updated"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+    #     _log("Command received: TEST_MEASURE")
+    #     return {"ok": True, "data": data}
 
     # Error : bilinmeyen bir komut
     _log(f"Unknown command received: {cmd.name}")

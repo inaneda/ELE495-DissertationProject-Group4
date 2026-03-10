@@ -175,5 +175,8 @@ class ResistorDiodeDetectionONNX:
         cv2.destroyAllWindows()
 
 
-detector = ResistorDiodeDetectionONNX(0)
+detector = ResistorDiodeDetectionONNX(
+    0,
+    r"src/app/vision/best.onnx"
+)
 detector()
