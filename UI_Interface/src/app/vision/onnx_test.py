@@ -2,6 +2,7 @@ import cv2
 import numpy as np
 import onnxruntime as ort
 from picamera2 import Picamera2
+from libcamera import controls
 
 class ResistorDiodeDetectionONNX:
 
@@ -105,6 +106,7 @@ class ResistorDiodeDetectionONNX:
     def __call__(self):
         picam2 = Picamera2()
         picam2.configure(picam2.create_preview_configuration(main={"format":"BGR888", "size":(640,640)}))
+        picam2.set_controls({"AfMode": controls.AfModeEnum.Continuous})
         picam2.start()
 
         while True:
