@@ -153,8 +153,9 @@ def overlay():
         return Response(content=buf.tobytes(), media_type="image/jpeg")
 
     boxes, scores, class_ids = vision_service.detect(frame)
+    draw_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
     overlay_img = vision_service.draw_overlay(
-        frame=frame,
+        frame=draw_frame,
         boxes=boxes,
         scores=scores,
         class_ids=class_ids,

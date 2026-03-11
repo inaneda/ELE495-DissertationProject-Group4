@@ -62,6 +62,7 @@ class CameraService:
                 # real - Picamera2
                 try:
                     from picamera2 import Picamera2
+                    from libcamera import controls
                 except Exception as e:
                     print(f"[CAMERA] Picamera2 import failed: {e}")
                     self.picam = None
@@ -72,6 +73,7 @@ class CameraService:
                 # RGB/BGR dizisi
                 cfg = picam.create_preview_configuration(main={"size": (1280, 720), "format": "RGB888"})
                 picam.configure(cfg)
+                picam.set_controls({"AfMode": controls.AfModeEnum.Continuous})
                 picam.start()
 
                 self.picam = picam

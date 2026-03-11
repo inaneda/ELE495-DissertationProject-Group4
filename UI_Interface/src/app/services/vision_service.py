@@ -65,7 +65,7 @@ class VisionService:
         self.orig_h, self.orig_w = frame.shape[:2]
 
         img = cv2.resize(frame, (self.imgsz, self.imgsz))
-        img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+        #img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
         img = img.astype(np.float32) / 255.0
         img = np.transpose(img, (2, 0, 1))
         img = np.expand_dims(img, axis=0)
