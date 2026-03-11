@@ -3,7 +3,7 @@ File Name       : status.py
 Author          : Eda
 Project         : ELE 495 Dissertation Project - SMD Pick and Place Machine
 Created Date    : 2026-02-01
-Last Modified   : 2026-02-04
+Last Modified   : 2026-03-10
 
 Description:
 This module defines the /api/status endpoint.
@@ -13,21 +13,17 @@ including robot state, test station state, logs, and connection status.
 This endpoint is periodically polled by the dashboard frontend.
 """
 
-from fastapi import APIRouter
-
-# API key
-from fastapi import Depends
+from fastapi import APIRouter, Depends
 from src.app.security import require_api_key
 
-# Router
+
 router = APIRouter(
     prefix="/api/status",
     tags=["Status"],
-    dependencies=[Depends(require_api_key)] # API key
+    dependencies=[Depends(require_api_key)]
 )
 
-# sonra bak !!!!!!! - gecici veri
-# sistem durumu - gecici
+
 SYSTEM_STATE = {
     "robot": {
         "status": "idle",
@@ -53,43 +49,47 @@ SYSTEM_STATE = {
     },
 
     "grbl": {
-        "state": "unknown",                 # Idle/Run/Hold/Alarm
-        "mpos": {"x": 0.0, "y": 0.0, "z": 0.0},
-        "last_ok": None,                 # True/False/None
-        "last_line": None,               # son gcode satırı - demo
-        "last_updated": None             # ISO string
+        "state": "unknown",
+        "mpos": {
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0
+        },
+        "last_ok": None,
+        "last_line": None,
+        "last_updated": None
     },
 
     "teststation": {
         "mode": "none",
         "last_adc": None,
         "last_voltage_v": None,
+        "last_resistance_ohm": None,
         "last_result": None,
-        "last_updated": None
+        "last_updated": None,
+        "value_text": None,
+        "raw_text": None
     },
 
     "measurements": {
-        "R1": None,
-        "R2": None,
-        "D1": None,
-        "D2": None,
-        "R3": None,
-        "R4": None,
-        "R5": None,
-        "R6": None
+        "result": None,
+        "voltage": None,
+        "resistance_ohm": None,
+        "value_text": None,
+        "raw_text": None
     },
 
     "logs": [],
 
     "image_processing": {
         "last_detection": {
-            "component": None,      # R1, R2, D1, D2
-            "type": None,           # R, D
-            "confidence": None       # 0 - 1
+            "component": None,
+            "type": None,
+            "confidence": None
         },
-        "last_placement": {         # yerlestirme dogrulaması
-            "pad": None,            # a, b, c, d
-            "accuracy": None,        # dogruluk 0 -100
+        "last_placement": {
+            "pad": None,
+            "accuracy": None,
             "status": "unknown"
         },
         "last_updated": None
@@ -97,7 +97,7 @@ SYSTEM_STATE = {
 
     "connections": {
         "arduino_motors": {
-           "status": False,
+            "status": False,
             "port": None
         },
         "arduino_teststation": {
@@ -105,13 +105,13 @@ SYSTEM_STATE = {
             "port": None
         },
         "camera": {
-        "status": False,
-        "port": None
+            "status": False,
+            "port": None
         }
     },
 }
 
-# sistemin su anki durumunu alir : GET
+
 @router.get("/")
 def get_status():
     """

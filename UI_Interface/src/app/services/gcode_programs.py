@@ -2,127 +2,237 @@
 File Name       : gcode_programs.py
 Author          : Eda
 Description:
-Single fixed Pick&Place program definition.
-G-codes will be filled later by the team.
+Fixed Pick&Place program definition.
+Runs the exact proven Baboli sequence in the same order.
 """
 
 from __future__ import annotations
 from dataclasses import dataclass
 from typing import Optional, Dict, List
 
-# komponent ve pad eslestirmesi
-# rahatca degisiklik yapılabilsin diye
-PAD_BY_COMPONENT: Dict[str, str] = {
-    "R1": "A",
-    "R2": "C",
-    "D1": "B",
-    "D2": "D",
-}
 
-# vision
-TARGET_BOX_BY_PAD: Dict[str, list[int]] = {
-    "A": [150, 150, 210, 180],
-    "B": [250, 150, 310, 180],
-    "C": [150, 250, 210, 280],
-    "D": [250, 250, 310, 280],
-}
-
-GCODE: Dict[str, str | List[str]] = {
-    # "G90;G0 X.. Y.." veya ["G90","G0 X.. Y.."]
-    "HOME": "G90; G92 X0 Y0 Z0; G0 X10 Y10 Z10",
-    "VAC_ON": "",
-    "VAC_OFF": "",
-
-    "MOVE_TEST": "G90; G0 X263.997 Y100.000",
-    "TEST_PRESS_DWELL": "G90; G1 Z26 F200; G4 P3; G0 Z15",
-
-    "R1_FEEDER_MOVE": "G90; G0 X26.003 Y68.990",
-    "R1_PICK_Z": "G90; G1 Z26 F200; G0 Z15",
-
-    "R2_FEEDER_MOVE": "G90; G0 X26.003 Y68.990",
-    "R2_PICK_Z": "G90; G1 Z26 F200; G0 Z15",
-
-    "D1_FEEDER_MOVE": "G90; G0 X26.003 Y68.990",
-    "D1_PICK_Z": "G90; G1 Z26 F200; G0 Z15",
-
-    "D2_FEEDER_MOVE": "G90; G0 X26.003 Y68.990",
-    "D2_PICK_Z": "G90; G1 Z26 F200; G0 Z15",
-
-    "MOVE_PCB_A": "G90; G0 X592.218 Y365",
-    "MOVE_PCB_B": "G90; G0 X592.218 Y365",
-    "MOVE_PCB_C": "G90; G0 X592.218 Y365",
-    "MOVE_PCB_D": "G90; G0 X592.218 Y365",
-
-    "PLACE_Z": "G90; G1 Z24.5 F200",
-    "PLACE_Z_UP": "G90; G0 Z15",
-
-    # ek 4 direncin olcumunun alinmasi icin ****** bak
-    "R3_FEEDER_MOVE": "",
-    "R3_PICK_Z": "",
-
-    "R4_FEEDER_MOVE": "",
-    "R4_PICK_Z": "",
-
-    "R5_FEEDER_MOVE": "",
-    "R5_PICK_Z": "",
-
-    "R6_FEEDER_MOVE": "",
-    "R6_PICK_Z": "",
-}
-
-
-# programin adim aciklamalari
 @dataclass
 class Step:
     id: str
-    label: str # UI logs/task
-    gcode: str | List[str] # "G91;G0 X50;G90" veya ["G91", "G0 X50", "G90"]
-    marks_done_component: Optional[str] = None # yerlestirme tamamlaninca set edilliyor
-    vacuum_expected: Optional[bool] = None # durum takibi icin
+    label: str
+    gcode: str | List[str]
+    marks_done_component: Optional[str] = None
+    vacuum_expected: Optional[bool] = None
+    trigger_measurement: bool = False
 
 
 def _normalize_gcode(x: str | List[str]) -> List[str]:
     if isinstance(x, list):
-        normalized: List[str] = []
-        for item in x:
-            if not item:
-                continue
-            if isinstance(item, str) and ";" in item:
-                normalized.extend([s.strip() for s in item.split(";") if s.strip()])
-            else:
-                item = str(item).strip()
-                if item:
-                    normalized.append(item)
-        return normalized
-
+        return [s.strip() for s in x if s and s.strip()]
     return [s.strip() for s in x.split(";") if s.strip()]
 
 
+GCODE: Dict[str, str | List[str]] = {
+    # ------------------------------------------------
+    # BASLANGIC VE Z PROBE
+    # ------------------------------------------------
+    "HOME": [
+        "G92 X0 Y0",
+        "G0 X10 Y10",
+        "G38.2 Z-60 F60",
+        "G92 Z0",
+    ],
+
+    # ------------------------------------------------
+    # 1. BLOK
+    # ------------------------------------------------
+    "BLOCK_1_PICK": [
+        "G0 X15 Y62",
+        "G1 Z26 F200",
+        "M8",
+        "G0 Z15",
+    ],
+    "BLOCK_1_TEST": [
+        "G0 X263.997 Y100.000",
+        "G1 Z26 F200",
+        "G4 P3",
+        "G0 Z15",
+    ],
+    "BLOCK_1_PLACE": [
+        "G0 X592.218 Y365.000",
+        "G1 Z24.5 F200",
+        "M9",
+        "G0 Z15",
+    ],
+
+    # ------------------------------------------------
+    # 2. BLOK
+    # ------------------------------------------------
+    "BLOCK_2_PICK": [
+        "G0 X15 Y87.5",
+        "G1 Z19 F200",
+        "M8",
+        "G0 Z15",
+    ],
+    "BLOCK_2_TEST": [
+        "G0 X263.997 Y100.000",
+        "G1 Z19 F200",
+        "G4 P3",
+        "G0 Z15",
+    ],
+    "BLOCK_2_PLACE": [
+        "G0 X592.218 Y410.000",
+        "G1 Z19 F200",
+        "M9",
+        "G0 Z15",
+    ],
+
+    # ------------------------------------------------
+    # 3. BLOK
+    # ------------------------------------------------
+    "BLOCK_3_PICK": [
+        "G0 X15 Y112.5",
+        "G1 Z19 F200",
+        "M8",
+        "G0 Z15",
+    ],
+    "BLOCK_3_TEST": [
+        "G0 X263.997 Y100.000",
+        "G1 Z19 F200",
+        "G4 P3",
+        "G0 Z15",
+    ],
+    "BLOCK_3_PLACE": [
+        "G0 X638.000 Y371.591",
+        "G1 Z19 F200",
+        "M9",
+        "G0 Z15",
+    ],
+
+    # ------------------------------------------------
+    # 4. BLOK
+    # ------------------------------------------------
+    "BLOCK_4_PICK": [
+        "G0 X15 Y137.5",
+        "G1 Z19 F200",
+        "M8",
+        "G0 Z15",
+    ],
+    "BLOCK_4_TEST": [
+        "G0 X263.997 Y100.000",
+        "G1 Z19 F200",
+        "G4 P3",
+        "M9",
+        "G0 Z15",
+        "G4 P5",
+        "G1 Z19 F200",
+        "M8",
+        "G0 Z15",
+    ],
+    "BLOCK_4_PLACE": [
+        "G0 X638.000 Y410.000",
+        "G1 Z19 F200",
+        "M9",
+        "G0 Z15",
+    ],
+
+    # ------------------------------------------------
+    # 5. BLOK
+    # ------------------------------------------------
+    "BLOCK_5_PICK": [
+        "G0 X15 Y162.5",
+        "G1 Z19 F200",
+        "M8",
+        "G0 Z15",
+    ],
+    "BLOCK_5_TEST": [
+        "G0 X263.997 Y100.000",
+        "G1 Z19 F200",
+        "G4 P3",
+        "G0 Z15",
+    ],
+    "BLOCK_5_RETURN": [
+        "G0 X15 Y162.5",
+        "G1 Z19 F200",
+        "M9",
+        "G0 Z15",
+    ],
+
+    # ------------------------------------------------
+    # 6. BLOK
+    # ------------------------------------------------
+    "BLOCK_6_PICK": [
+        "G0 X15 Y187.5",
+        "G1 Z19 F200",
+        "M8",
+        "G0 Z15",
+    ],
+    "BLOCK_6_TEST": [
+        "G0 X263.997 Y100.000",
+        "G1 Z19 F200",
+        "G4 P3",
+        "G0 Z15",
+    ],
+    "BLOCK_6_RETURN": [
+        "G0 X15 Y187.5",
+        "G1 Z19 F200",
+        "M9",
+        "G0 Z15",
+    ],
+
+    # ------------------------------------------------
+    # 7. KONUM
+    # ------------------------------------------------
+    "BLOCK_7_PICK": [
+        "G0 X15 Y212.5",
+        "G1 Z19 F200",
+        "M8",
+        "G0 Z15",
+    ],
+    "BLOCK_7_TEST": [
+        "G0 X263.997 Y100.000",
+        "G1 Z19 F200",
+        "G4 P3",
+        "G0 Z15",
+    ],
+    "BLOCK_7_RETURN": [
+        "G0 X15 Y212.5",
+        "G1 Z19 F200",
+        "M9",
+        "G0 Z15",
+    ],
+
+    # ------------------------------------------------
+    # 8. KONUM
+    # ------------------------------------------------
+    "BLOCK_8_PICK": [
+        "G0 X15 Y237.5",
+        "G1 Z19 F200",
+        "M8",
+        "G0 Z15",
+    ],
+    "BLOCK_8_TEST": [
+        "G0 X263.997 Y100.000",
+        "G1 Z19 F200",
+        "G4 P3",
+        "G0 Z15",
+    ],
+    "BLOCK_8_RETURN": [
+        "G0 X15 Y237.5",
+        "G1 Z19 F200",
+        "M9",
+        "G0 Z15",
+    ],
+}
+
+
 def validate_required_gcodes() -> None:
-    """
-    It is called when the Start button is pressed.
-    It checks if the required keys are filled in the GCODE table.
-    It throws a ValueError if there are any empty or missing keys.
-    """
     required = [
         "HOME",
-        "MOVE_TEST",
-        "TEST_PRESS_DWELL",
-        "MOVE_PCB_A",
-        "MOVE_PCB_B",
-        "MOVE_PCB_C",
-        "MOVE_PCB_D",
-        "R1_FEEDER_MOVE", "R1_PICK_Z",
-        "R2_FEEDER_MOVE", "R2_PICK_Z",
-        "D1_FEEDER_MOVE", "D1_PICK_Z",
-        "D2_FEEDER_MOVE", "D2_PICK_Z",
-        "PLACE_Z",
-        "PLACE_Z_UP",
-        # measurement only
-        "R3_FEEDER_MOVE", "R3_PICK_Z",
-        "R4_FEEDER_MOVE", "R4_PICK_Z",
-        "R5_FEEDER_MOVE", "R5_PICK_Z",
-        "R6_FEEDER_MOVE", "R6_PICK_Z",
+
+        "BLOCK_1_PICK", "BLOCK_1_TEST", "BLOCK_1_PLACE",
+        "BLOCK_2_PICK", "BLOCK_2_TEST", "BLOCK_2_PLACE",
+        "BLOCK_3_PICK", "BLOCK_3_TEST", "BLOCK_3_PLACE",
+        "BLOCK_4_PICK", "BLOCK_4_TEST", "BLOCK_4_PLACE",
+        "BLOCK_5_PICK", "BLOCK_5_TEST", "BLOCK_5_RETURN",
+        "BLOCK_6_PICK", "BLOCK_6_TEST", "BLOCK_6_RETURN",
+        "BLOCK_7_PICK", "BLOCK_7_TEST", "BLOCK_7_RETURN",
+        "BLOCK_8_PICK", "BLOCK_8_TEST", "BLOCK_8_RETURN",
     ]
 
     missing = []
@@ -144,171 +254,51 @@ def validate_required_gcodes() -> None:
         raise ValueError(
             "GCODE table has empty/missing entries:\n- " + "\n- ".join(missing)
         )
-    
+
 
 def build_program() -> List[Step]:
-    """
-    Fixed program:
-      For each component:
-        - go feeder
-        - vacuum on
-        - go test station (press + dwell)
-        - go pcb pad
-        - place + vacuum off
-    G-codes are placeholders to be replaced.
-    """
-    steps: List[Step] = []
-
-    # --- global start / home
-    steps.append(
+    steps: List[Step] = [
         Step(
             id="HOME",
             label="Go to HOME (startup position)",
-            gcode=GCODE["HOME"],    # TODO: fill
+            gcode=GCODE["HOME"],
             vacuum_expected=False,
-        )
-    )
+            trigger_measurement=False,
+        ),
 
-    # siralama buradan degistirilebilir
-    place_order = ["R1", "R2", "D1", "D2"]
-    # measureda otomatik olsun
-    measure_only_order = ["R3", "R4", "R5", "R6"]
+        Step("BLOCK_1_PICK", "1. BLOK PICK", GCODE["BLOCK_1_PICK"], vacuum_expected=True),
+        Step("BLOCK_1_TEST", "1. BLOK TEST", GCODE["BLOCK_1_TEST"], vacuum_expected=True, trigger_measurement=True),
+        Step("BLOCK_1_PLACE", "1. BLOK PLACE", GCODE["BLOCK_1_PLACE"], vacuum_expected=False, marks_done_component="R1"),
 
-    # comp ile sira tutuluyor, akis ayni oldugundan tekrar etmemek icin
-    for comp in place_order:
-        pad = PAD_BY_COMPONENT[comp]
+        Step("BLOCK_2_PICK", "2. BLOK PICK", GCODE["BLOCK_2_PICK"], vacuum_expected=True),
+        Step("BLOCK_2_TEST", "2. BLOK TEST", GCODE["BLOCK_2_TEST"], vacuum_expected=True, trigger_measurement=True),
+        Step("BLOCK_2_PLACE", "2. BLOK PLACE", GCODE["BLOCK_2_PLACE"], vacuum_expected=False, marks_done_component="R2"),
 
-        place_lines: List[str] = []
+        Step("BLOCK_3_PICK", "3. BLOK PICK", GCODE["BLOCK_3_PICK"], vacuum_expected=True),
+        Step("BLOCK_3_TEST", "3. BLOK TEST", GCODE["BLOCK_3_TEST"], vacuum_expected=True, trigger_measurement=True),
+        Step("BLOCK_3_PLACE", "3. BLOK PLACE", GCODE["BLOCK_3_PLACE"], vacuum_expected=False, marks_done_component="D1"),
 
-        vac_off = GCODE.get("VAC_OFF", "")
-        if isinstance(vac_off, list):
-            if any((s or "").strip() for s in vac_off):
-                place_lines.extend(vac_off)
-        elif str(vac_off).strip():
-            place_lines.append(str(vac_off))
+        Step("BLOCK_4_PICK", "4. BLOK PICK", GCODE["BLOCK_4_PICK"], vacuum_expected=True),
+        Step("BLOCK_4_TEST", "4. BLOK TEST", GCODE["BLOCK_4_TEST"], vacuum_expected=True, trigger_measurement=True),
+        Step("BLOCK_4_PLACE", "4. BLOK PLACE", GCODE["BLOCK_4_PLACE"], vacuum_expected=False, marks_done_component="D2"),
 
-        place_sequence: List[str | List[str]] = [
-            GCODE["PLACE_Z"],
-            place_lines,
-            GCODE["PLACE_Z_UP"],
-        ]
+        Step("BLOCK_5_PICK", "5. BLOK PICK", GCODE["BLOCK_5_PICK"], vacuum_expected=True),
+        Step("BLOCK_5_TEST", "5. BLOK TEST", GCODE["BLOCK_5_TEST"], vacuum_expected=True, trigger_measurement=True),
+        Step("BLOCK_5_RETURN", "5. BLOK RETURN", GCODE["BLOCK_5_RETURN"], vacuum_expected=False),
 
+        Step("BLOCK_6_PICK", "6. BLOK PICK", GCODE["BLOCK_6_PICK"], vacuum_expected=True),
+        Step("BLOCK_6_TEST", "6. BLOK TEST", GCODE["BLOCK_6_TEST"], vacuum_expected=True, trigger_measurement=True),
+        Step("BLOCK_6_RETURN", "6. BLOK RETURN", GCODE["BLOCK_6_RETURN"], vacuum_expected=False),
 
-        steps += [
-            Step( # komponent almaya gitme
-                id=f"{comp}_PICK_MOVE",
-                label=f"{comp}: Move to feeder",
-                gcode=GCODE[f"{comp}_FEEDER_MOVE"],  # TODO
-            ),
-            Step( # komponent almak icin vakum acma
-                id=f"{comp}_VAC_ON",
-                label=f"{comp}: Vacuum ON",
-                gcode=GCODE["VAC_ON"],                 # TODO
-                vacuum_expected=True,
-            ),
-            Step( # almak icin z ekseni hareketi
-                id=f"{comp}_PICK_Z",
-                label=f"{comp}: Pick Z down/up",
-                gcode=GCODE[f"{comp}_PICK_Z"],        # TODO
-                vacuum_expected=True,
-            ),
-            Step( # test istasyonuna gitme
-                id=f"{comp}_TO_TEST",
-                label=f"{comp}: Move to test station",
-                gcode=GCODE["MOVE_TEST"],              # TODO
-                vacuum_expected=True,
-            ),
-            Step( # test istasyonunda temazsizlik olmasin diye baski uygulama
-                id=f"{comp}_TEST_PRESS",
-                label=f"{comp}: Test press + dwell",
-                gcode=GCODE["TEST_PRESS_DWELL"],        # TODO
-                vacuum_expected=True,
-            ),
-            Step( # pcb'ye gitme
-                id=f"{comp}_TO_PCB",
-                label=f"{comp}: Move to PCB pad {pad}",
-                gcode=GCODE[f"MOVE_PCB_{pad}"],       # TODO
-                vacuum_expected=True,
-            ),
-            Step(
-                id=f"{comp}_PLACE",
-                label=f"{comp}: Place on pad {pad}",
-                gcode=place_sequence,         # TODO
-                marks_done_component=comp,
-                vacuum_expected=False,
-            ),
-        ]
-    
-    for comp in measure_only_order:
-        return_sequence: List[str | List[str]] = []
+        Step("BLOCK_7_PICK", "7. KONUM PICK", GCODE["BLOCK_7_PICK"], vacuum_expected=True),
+        Step("BLOCK_7_TEST", "7. KONUM TEST", GCODE["BLOCK_7_TEST"], vacuum_expected=True, trigger_measurement=True),
+        Step("BLOCK_7_RETURN", "7. KONUM RETURN", GCODE["BLOCK_7_RETURN"], vacuum_expected=False),
 
-        vac_off = GCODE.get("VAC_OFF", "")
-        if isinstance(vac_off, list):
-            if any((s or "").strip() for s in vac_off):
-                return_sequence.extend(vac_off)
-        elif str(vac_off).strip():
-            return_sequence.append(str(vac_off))
+        Step("BLOCK_8_PICK", "8. KONUM PICK", GCODE["BLOCK_8_PICK"], vacuum_expected=True),
+        Step("BLOCK_8_TEST", "8. KONUM TEST", GCODE["BLOCK_8_TEST"], vacuum_expected=True, trigger_measurement=True),
+        Step("BLOCK_8_RETURN", "8. KONUM RETURN", GCODE["BLOCK_8_RETURN"], vacuum_expected=False),
+    ]
 
-        return_place_sequence: List[str | List[str]] = [
-            GCODE["PLACE_Z"],
-            return_sequence,
-            GCODE["PLACE_Z_UP"],
-        ]
-
-        steps += [
-            Step(
-                id=f"{comp}_PICK_MOVE",
-                label=f"{comp}: Move to feeder",
-                gcode=GCODE[f"{comp}_FEEDER_MOVE"],
-            ),
-            Step(
-                id=f"{comp}_VAC_ON",
-                label=f"{comp}: Vacuum ON",
-                gcode=GCODE["VAC_ON"],
-                vacuum_expected=True,
-            ),
-            Step(
-                id=f"{comp}_PICK_Z",
-                label=f"{comp}: Pick Z down/up",
-                gcode=GCODE[f"{comp}_PICK_Z"],
-                vacuum_expected=True,
-            ),
-            Step(
-                id=f"{comp}_TO_TEST",
-                label=f"{comp}: Move to test station",
-                gcode=GCODE["MOVE_TEST"],
-                vacuum_expected=True,
-            ),
-            Step(
-                id=f"{comp}_TEST_PRESS",
-                label=f"{comp}: Test press + dwell",
-                gcode=GCODE["TEST_PRESS_DWELL"],
-                vacuum_expected=True,
-            ),
-            Step(
-                id=f"{comp}_RETURN",
-                label=f"{comp}: Return to feeder",
-                gcode=GCODE[f"{comp}_FEEDER_MOVE"],
-                vacuum_expected=True,
-            ),
-            Step(
-                id=f"{comp}_RETURN_PLACE",
-                label=f"{comp}: Return component to feeder position",
-                gcode=return_place_sequence,
-                vacuum_expected=False,
-            ),
-        ]
-
-    steps.append(
-        Step(
-            id="DONE",
-            label="Program finished",
-            gcode="",
-            vacuum_expected=False,
-        )
-    )
-
-    # normalize gcode types
     for s in steps:
         s.gcode = _normalize_gcode(s.gcode) if s.gcode else []
 

@@ -157,7 +157,7 @@ function setText(id, value){
 //     });
 // }
 
-
+//
 //
 //
 //
@@ -192,20 +192,21 @@ async function loadConfig() {
     try {
         const res = await fetch("/api/config");
         const data = await res.json();
-    if (data && typeof data.api_key === "string" && data.api_key.length > 0) {
-      API_KEY = data.api_key;
-      localStorage.setItem("PNP_API_KEY", API_KEY); // ilerisi icin sakla
+        if (data && typeof data.api_key === "string" && data.api_key.length > 0) {
+            API_KEY = data.api_key;
+            localStorage.setItem("PNP_API_KEY", API_KEY); // ilerisi icin sakla
+        }
+    } catch (e) {
+        console.warn("Config fetch failed:", e);
     }
-  } catch (e) {
-    console.warn("Config fetch failed:", e);
-  }
-  if (!API_KEY) {
-    const entered = prompt("Enter API key (PNP_API_KEY):");
-    if (entered && entered.trim().length > 0) {
-      API_KEY = entered.trim();
-      localStorage.setItem("PNP_API_KEY", API_KEY);
+
+    if (!API_KEY) {
+        const entered = prompt("Enter API key (PNP_API_KEY):");
+        if (entered && entered.trim().length > 0) {
+            API_KEY = entered.trim();
+            localStorage.setItem("PNP_API_KEY", API_KEY);
+        }
     }
-  }
 }
 
 
@@ -226,7 +227,7 @@ async function sendCmd(name, payload=null){
 
         const data = await res.json();
         
-        if (name === 'reset') {
+        if (name === "reset") {
             // Backend reset succeeded -> clear UI pairing state too
             // resetPairingUI();
         }
@@ -234,7 +235,7 @@ async function sendCmd(name, payload=null){
         console.log(`Command ${name} sent:`, data);
 
     }catch(error){
-        console.error('Command error:', error);
+        console.error("Command error:", error);
         alert("Command error. Check console.");
     }
 }
@@ -255,9 +256,9 @@ async function sendCmd(name, payload=null){
 //         });
 
 //         if(!res.ok){
-//         const txt = await res.text();
-//         alert("Plan send failed.\n" + txt);
-//         return;
+//             const txt = await res.text();
+//             alert("Plan send failed.\n" + txt);
+//             return;
 //         }
 
 //         const data = await res.json();
@@ -295,19 +296,18 @@ function setBadge(id, ok, label, port=null){
 async function fetchStatus(){
     try{
         const res = await apiFetch("/api/status/");
-        if(!res.ok) 
-            return;
+        if(!res.ok) return;
+
         const data = await res.json();
 
         // const planCount = (data.plan || []).length;
         // const planTs = data.plan_received_at;
 
         // if (planCount > 0) {
-        // setText("planInfo", `PLAN: LOADED (${planCount})  ${planTs ?? ""}`.trim());
+        //     setText("planInfo", `PLAN: LOADED (${planCount})  ${planTs ?? ""}`.trim());
         // } else {
-        // setText("planInfo", "PLAN: EMPTY");
+        //     setText("planInfo", "PLAN: EMPTY");
         // }
-
 
         // robot
         setText("robotStatus", data.robot?.status ?? "-");
@@ -327,21 +327,34 @@ async function fetchStatus(){
 
         setText(
             "grblOk", 
-            (grbl.last_ok === true) ? "OK" : 
+            (grbl.last_ok === true) ? "OK" :
             (grbl.last_ok === false ? "NO" : "-")
         );
 
-
-        // test
+        // test station
         setText("testMode", data.teststation?.mode ?? "-");
-        setText("testAdc", data.teststation?.last_adc ?? "-");
-        setText("testV", data.teststation?.last_voltage_v ?? "-");
         setText("testResult", data.teststation?.last_result ?? "-");
+        setText("testValue", data.teststation?.value_text ?? "-");
+
+        setText(
+            "testV",
+            data.teststation?.last_voltage_v != null
+                ? Number(data.teststation.last_voltage_v).toFixed(4)
+                : "-"
+        );
+
+        setText(
+            "testR",
+            data.teststation?.last_resistance_ohm != null
+                ? (Number(data.teststation.last_resistance_ohm) / 1000).toFixed(3)
+                : "-"
+        );
+
         setText("testUpdated", data.teststation?.last_updated ?? "-");
 
         // measurements
         if (data.measurements) {
-            updateMeasurements(data.measurements)
+            updateMeasurements(data.measurements);
         }
 
         // program status
@@ -369,7 +382,6 @@ async function fetchStatus(){
             el.classList.toggle("done", done[k] === true);
         });
 
-
         // image processing
         const ip = data.image_processing || {};
         const det = ip.last_detection || {};
@@ -390,29 +402,32 @@ async function fetchStatus(){
         setText("placeStatus", plc.status ?? "-");
         setText("visionUpdated", ip.last_updated ?? "-");
 
-
         // logs -> gorev gecmisi
         const logs = data.logs || [];
         const historyBox = document.getElementById("historyBox");
         if (historyBox) historyBox.textContent = logs.join("\n");
 
-
         // baglanti durumu
         setBadge("badgePi", data.mode !== "DEMO", "Server");
         const conn = data.connections || {};
+
         // motors arduino
         const m = conn.arduino_motors || {};
         setBadge("badgeArduinoMotors", m.status, "Arduino Motors", m.port);
+
         // teststation arduino
         const t = conn.arduino_teststation || {};
         setBadge("badgeArduinoTest", t.status, "Arduino Test", t.port);
+
         // yeni connection yapisi (object icinde status var)
         const cam = conn.camera || {};
+
         // badge guncelle
         setBadge("badgeCamera", cam.status, "Camera", cam.port);
 
         // global kamera bilgisi
         CAMERA_OK = cam.status === true;
+
         // kamera placeholder kontrolu
         const camOk = cam.status === true;
 
@@ -421,10 +436,13 @@ async function fetchStatus(){
         const camPh = document.getElementById("cameraPlaceholder");
 
         // summary
-        if (data.mode === "DEMO") {
-            connSummary.innerText = "Demo mode";
-        } else {
-            connSummary.innerText = "Local network";
+        const connSummary = document.getElementById("connSummary");
+        if (connSummary) {
+            if (data.mode === "DEMO") {
+                connSummary.innerText = "Demo mode";
+            } else {
+                connSummary.innerText = "Local network";
+            }
         }
     
         if (camImg && camPh){
@@ -443,7 +461,11 @@ async function fetchStatus(){
         setBadge("badgeArduinoMotors", null, "Arduino Motors");
         setBadge("badgeArduinoTest", null, "Arduino Test");
         setBadge("badgeCamera", null, "Camera");
-        document.getElementById("connSummary").textContent = "no connection";
+
+        const connSummary = document.getElementById("connSummary");
+        if (connSummary) {
+            connSummary.textContent = "no connection";
+        }
     }
 }
 
@@ -452,38 +474,39 @@ async function refreshCamera(){
     const camImg = document.getElementById("cameraImg");
     if(!camImg) return;
     if(!API_KEY || !CAMERA_OK) return;
+
     try {
-    const res = await apiFetch(`/api/camera/snapshot?t=${Date.now()}`);
-    if (!res.ok) return;
+        const res = await apiFetch(`/api/camera/overlay?t=${Date.now()}`);
+        if (!res.ok) return;
 
-    const blob = await res.blob();
-    const url = URL.createObjectURL(blob);
+        const blob = await res.blob();
+        const url = URL.createObjectURL(blob);
 
-    // eski URL'yi serbest bırak (memory leak olmasın)
-    if (camImg.dataset.prevUrl) URL.revokeObjectURL(camImg.dataset.prevUrl);
+        // eski URL'yi serbest bırak (memory leak olmasin)
+        if (camImg.dataset.prevUrl) URL.revokeObjectURL(camImg.dataset.prevUrl);
 
-    camImg.src = url;
-    camImg.dataset.prevUrl = url;
-  } catch (e) {
-    console.warn("Camera refresh error:", e);
-  }
+        camImg.src = url;
+        camImg.dataset.prevUrl = url;
+    } catch (e) {
+        console.warn("Camera refresh error:", e);
+    }
 }
 
 // acilmadiginda baglantiyi yeniden almaya calisma
 async function restartCamera(){
-  try{
-    const res = await apiFetch("/api/camera/restart", { method: "POST" });
-    if (!res.ok){
-      const txt = await res.text();
-      alert("Camera restart failed: " + txt);
-      return;
+    try{
+        const res = await apiFetch("/api/camera/restart", { method: "POST" });
+        if (!res.ok){
+            const txt = await res.text();
+            alert("Camera restart failed: " + txt);
+            return;
+        }
+        await fetchStatus();     // CAMERA_OK guncelle
+        refreshCamera();         // yeni snapshot iste
+    }catch(e){
+        console.error("Camera restart error:", e);
+        alert("Camera restart error. Check console.");
     }
-    await fetchStatus();     // CAMERA_OK guncelle
-    refreshCamera();         // yeni snapshot iste
-  }catch(e){
-    console.error("Camera restart error:", e);
-    alert("Camera restart error. Check console.");
-  }
 }
 
 // start-stop-reset butonlari + send plan butonu
@@ -499,7 +522,6 @@ function bindCommandButtons() {
     // const btnTestMeasure = document.getElementById("btnTestMeasure");
     // const btnManualTest = document.getElementById("btnManualTest");
     
-
     if (startBtn) startBtn.addEventListener("click", () => sendCmd("start"));
     if (stopBtn) stopBtn.addEventListener("click", () => sendCmd("stop"));
     if (resetBtn) resetBtn.addEventListener("click", () => sendCmd("reset"));
@@ -514,8 +536,7 @@ function bindCommandButtons() {
 
 
 // sayfa ilk acildiginda calisacak kod - init
-document.addEventListener("DOMContentLoaded",  async () =>{
-    
+document.addEventListener("DOMContentLoaded", async () =>{
     await loadConfig(); // ilk key alinmali
 
     // setSelectedPart(null);
@@ -523,9 +544,6 @@ document.addEventListener("DOMContentLoaded",  async () =>{
 
     // bindUIEvents();
     bindCommandButtons();
-
-
-
 
     fetchStatus();
     setInterval(fetchStatus, 400); // 400ms polling - yenileme
@@ -537,23 +555,20 @@ document.addEventListener("DOMContentLoaded",  async () =>{
 
 // measurement verisi
 function updateMeasurements(meas) {
-
-    const comps = ["R1","R2","D1","D2","R3","R4","R5","R6"]
+    const comps = ["R1","R2","D1","D2","R3","R4","R5","R6"];
 
     comps.forEach(c => {
+        const el = document.getElementById("meas-" + c);
+        if (!el) return;
 
-        const el = document.getElementById("meas-" + c)
-        if (!el) return
-
-        const val = meas[c]
+        const val = meas[c];
 
         if (!val || val === null) {
-            el.textContent = "-"
+            el.textContent = "-";
         } else {
-            el.textContent = val
+            el.textContent = val;
         }
-
-    })
+    });
 }
 
 

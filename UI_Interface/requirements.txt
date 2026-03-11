@@ -7,7 +7,7 @@ pyserial
 
 # camera - image handling - vision
 # opencv-python
-opencv-python-headless
+opencv-python
 numpy
 onnxruntime
 

@@ -1,11 +1,3 @@
-"""
-File Name       : gcode_runner.py
-Author          : Eda
-Description:
-Runs a fixed G-code program step-by-step with stop/resume/reset support.
-Updates SYSTEM_STATE for UI (task/logs, vacuum state, PCB completion).
-"""
-
 from __future__ import annotations
 import threading
 import time
@@ -20,13 +12,11 @@ class GCodeRunner:
         self._lock = threading.Lock()
         self._thread: Optional[threading.Thread] = None
 
-        self._pause_event = threading.Event()  # when set => paused
-        self._stop_event = threading.Event()   # when set => hard stop thread loop (used by reset)
+        self._pause_event = threading.Event()
+        self._stop_event = threading.Event()
 
         self.current_step_idx = 0
         self.vacuum_on: bool = False
-
-        # start'a basinca (!!ozellikle idx=0 iken) yeniden build edilecek
         self.program = []
 
         print("[GCODE_RUNNER] Initialized")
@@ -36,21 +26,17 @@ class GCodeRunner:
 
     def _log(self, msg: str) -> None:
         from src.app.routers.status import SYSTEM_STATE
+
         ts = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         SYSTEM_STATE["logs"].append(f"[{ts}] {msg}")
 
-        # loglarin siniri
         if len(SYSTEM_STATE["logs"]) > 300:
             SYSTEM_STATE["logs"] = SYSTEM_STATE["logs"][-300:]
 
     def start(self) -> None:
-        """
-        Start or resume.
-        If already running, just unpause.
-        """
         from src.app.routers.status import SYSTEM_STATE
 
-        try: # eksik bir yer varsa hata versin
+        try:
             validate_required_gcodes()
         except Exception as e:
             self._log(f"GCodeRunner: START blocked - {e}")
@@ -64,10 +50,12 @@ class GCodeRunner:
             self._pause_event.clear()
             self._stop_event.clear()
 
-            # eger bastan baslaniyorsa yeniden build et (!!idx=0)
             if self.current_step_idx == 0 and not self.is_running():
                 self.program = build_program()
 
+                if not self.program:
+                    self._log("Program build failed (empty)")
+                    return
 
             if self.is_running():
                 SYSTEM_STATE["program"]["paused"] = False
@@ -78,91 +66,93 @@ class GCodeRunner:
 
             self._thread = threading.Thread(target=self._loop, daemon=True)
             self._thread.start()
+
             SYSTEM_STATE["program"]["running"] = True
             SYSTEM_STATE["program"]["paused"] = False
             SYSTEM_STATE["robot"]["status"] = "running"
+
             self._log("GCodeRunner: START")
 
     def stop(self) -> None:
-        """
-        Pause execution. Vacuum state stays as-is.
-        """
         self._pause_event.set()
         self._log("GCodeRunner: STOP (paused)")
 
         from src.app.routers.status import SYSTEM_STATE
+
         SYSTEM_STATE["robot"]["status"] = "stopped"
         SYSTEM_STATE["robot"]["current_task"] = "-"
         SYSTEM_STATE["program"]["paused"] = True
-        SYSTEM_STATE["program"]["running"] = True  
-        # paused ama program hala "aktif"
+        SYSTEM_STATE["program"]["running"] = True
 
     def reset(self) -> None:
-        """
-        Reset = stop thread + go to home + vacuum off + index=0.
-        After reset, new start begins from step 0.
-        """
         with self._lock:
             self._pause_event.clear()
             self._stop_event.set()
 
         self._log("GCodeRunner: RESET requested")
 
-        # calisan thread varsa bir sure bekle
         if self._thread and self._thread.is_alive():
             self._thread.join(timeout=1.5)
 
         self.current_step_idx = 0
         self.vacuum_on = False
+        self.program = []
 
         from src.app.routers.status import SYSTEM_STATE
+
         SYSTEM_STATE["robot"]["status"] = "idle"
         SYSTEM_STATE["robot"]["current_task"] = "-"
+
         SYSTEM_STATE["program"]["current_step"] = 0
         SYSTEM_STATE["program"]["total_steps"] = 0
         SYSTEM_STATE["program"]["current_label"] = "-"
         SYSTEM_STATE["program"]["vacuum_on"] = False
+
         SYSTEM_STATE["program"]["running"] = False
         SYSTEM_STATE["program"]["paused"] = False
 
-        # pcb tamamlamasini sifirlama
         for k in SYSTEM_STATE["program"]["pcb_done"].keys():
             SYSTEM_STATE["program"]["pcb_done"][k] = False
-        # komponent deger eslestirmesini sifirlama
+
         for k in SYSTEM_STATE["measurements"].keys():
             SYSTEM_STATE["measurements"][k] = None
 
-        self._log("GCodeRunner: RESET done")
+        SYSTEM_STATE["teststation"]["last_result"] = None
+        SYSTEM_STATE["teststation"]["last_voltage_v"] = None
+        SYSTEM_STATE["teststation"]["last_resistance_ohm"] = None
+        SYSTEM_STATE["teststation"]["last_updated"] = None
+        SYSTEM_STATE["teststation"]["mode"] = None
+        SYSTEM_STATE["teststation"]["value_text"] = None
+        SYSTEM_STATE["teststation"]["raw_text"] = None
+
         self._thread = None
 
+        self._log("GCodeRunner: RESET done")
 
     def _wait_if_paused(self) -> bool:
-        """
-        Returns False if hard-stopped, True otherwise.
-        """
         while self._pause_event.is_set():
             if self._stop_event.is_set():
                 return False
             time.sleep(0.05)
+
         return not self._stop_event.is_set()
 
     def _send_many(self, robot, lines: list[str]) -> bool:
         from src.app.routers.status import SYSTEM_STATE
 
-        # hangi gcode'lar hareket sayiliyor
-        motion_prefixes = ("G0", "G00", "G1", "G01", "G2", "G02", "G3", "G03", "G38")
+        if not lines:
+            return True
 
         for line in lines:
             if not self._wait_if_paused():
                 return False
-            
+
             line = (line or "").strip()
             if not line:
-                continue  # bos satir atlama
+                continue
 
             ok = robot.send_gcode(line)
 
-            # GRBL'in son bilgisi ile UI guncellenmeli
             SYSTEM_STATE["grbl"]["last_line"] = line
             SYSTEM_STATE["grbl"]["last_ok"] = bool(ok)
             SYSTEM_STATE["grbl"]["last_updated"] = time.strftime("%Y-%m-%dT%H:%M:%S")
@@ -174,387 +164,147 @@ class GCodeRunner:
                 SYSTEM_STATE["program"]["running"] = False
                 SYSTEM_STATE["program"]["paused"] = False
                 return False
-            
-            # !!
-            upper = line.upper()
-            if upper.startswith(motion_prefixes):
-                idle_ok = robot.wait_until_idle(timeout=20.0)
-                if not idle_ok:
-                    self._log(f"Robot did not become idle after: {line}")
-                    SYSTEM_STATE["robot"]["status"] = "error"
-                    SYSTEM_STATE["robot"]["current_task"] = "Motion wait error"
-                    SYSTEM_STATE["program"]["running"] = False
-                    SYSTEM_STATE["program"]["paused"] = False
-                    return False
 
         return True
-    
 
-    # vision
-    def _extract_comp_and_pad(self, step_id: str):
-        """
-        Extract the component/pad information from the STEP ID. 
-        For example: 
-            R1_PICK_Z -> comp=R1, pad=A
-            D2_PLACE  -> comp=D2, pad=D
-        """
-        comp = None
-        pad = None
-
-        if "_" in step_id:
-            comp = step_id.split("_")[0]
-
-        from src.app.services.gcode_programs import PAD_BY_COMPONENT
-        if comp in PAD_BY_COMPONENT:
-            pad = PAD_BY_COMPONENT[comp]
-
-        return comp, pad
-
-
-    def _run_pick_vision(self, step_id: str) -> None:
-        from src.app.routers.status import SYSTEM_STATE
-        from src.app.main import camera_service, vision_service
-
-        if camera_service is None or vision_service is None:
-            return
-        if not vision_service.is_ready():
-            return
-
-        frame = camera_service.get_frame()
-        if frame is None:
-            return
-
-        boxes, scores, class_ids = vision_service.detect(frame)
-        det = vision_service.summarize_detection(boxes, scores, class_ids)
-
-        SYSTEM_STATE["image_processing"]["last_detection"] = {
-            "component": det.get("component"),
-            "type": det.get("type"),
-            "confidence": det.get("confidence"),
-        }
-        SYSTEM_STATE["image_processing"]["last_updated"] = time.strftime("%Y-%m-%dT%H:%M:%S")
-
-    def _run_place_vision(self, step_id: str) -> None:
-        from src.app.routers.status import SYSTEM_STATE
-        from src.app.main import camera_service, vision_service
-        from src.app.services.gcode_programs import TARGET_BOX_BY_PAD
-
-        if camera_service is None or vision_service is None:
-            return
-        if not vision_service.is_ready():
-            return
-
-        comp, pad = self._extract_comp_and_pad(step_id)
-        if not pad:
-            return
-
-        target_box = TARGET_BOX_BY_PAD.get(pad)
-        if not target_box:
-            SYSTEM_STATE["image_processing"]["last_placement"] = {
-                "pad": pad,
-                "accuracy": None,
-                "status": "NO_TARGET_BOX"
-            }
-            SYSTEM_STATE["image_processing"]["last_updated"] = time.strftime("%Y-%m-%dT%H:%M:%S")
-            return
-
-        frame = camera_service.get_frame()
-        if frame is None:
-            return
-
-        boxes, scores, class_ids = vision_service.detect(frame)
-        det = vision_service.summarize_detection(boxes, scores, class_ids)
-        result = vision_service.score_target(target_box, boxes)
-
-        status_txt = "OK" if result["iou"] > 0 else "NO_MATCH"
-
-        SYSTEM_STATE["image_processing"]["last_detection"] = {
-            "component": det.get("component"),
-            "type": det.get("type"),
-            "confidence": det.get("confidence"),
-        }
-
-        SYSTEM_STATE["image_processing"]["last_placement"] = {
-            "pad": pad,
-            "accuracy": float(result["accuracy"]),
-            "status": status_txt
-        }
-
-        SYSTEM_STATE["image_processing"]["last_updated"] = time.strftime("%Y-%m-%dT%H:%M:%S")
-
-
-    # test station
-    # komponent ve deger eslestirmesi icin
-    def _format_measurement_text(self, comp: str, data: dict) -> str:
-        mode = str(data.get("mode", "")).lower()
-        value_text = str(data.get("value_text", "-")).strip()
-        result = str(data.get("result", "-")).strip().upper()
-
-        if comp.startswith("R"):
-            return value_text if value_text else "-"
-
-        if comp.startswith("D"):
-            if result in {"OPEN", "OK"}:
-                return "OPEN"
-            return "NOT OPEN"
-
-        return value_text if value_text else "-"
-    
-    
-    def _write_measurement_for_component(self, comp: str, data: dict) -> None:
-        from src.app.routers.status import SYSTEM_STATE
-
-        if comp not in SYSTEM_STATE["measurements"]:
-            return
-
-        SYSTEM_STATE["measurements"][comp] = self._format_measurement_text(comp, data)
-
-    # buton kalkti gerek yok
-    def _write_manual_resistor_measurement(self, data: dict) -> str | None:
-        from src.app.routers.status import SYSTEM_STATE
-
-        for comp in ["R3", "R4", "R5", "R6"]:
-            if not SYSTEM_STATE["measurements"].get(comp):
-                SYSTEM_STATE["measurements"][comp] = self._format_measurement_text(comp, data)
-                return comp
-
-        return None
-    
-    def _extract_component_from_step(self, step_id: str) -> str | None:
-        if "_" not in step_id:
-            return None
-
-        comp = step_id.split("_")[0].strip().upper()
-        if comp in {"R1", "R2", "D1", "D2", "R3", "R4", "R5", "R6"}:
-            return comp
-
-        return None
-    
-    # buton kalkti gerek yok
-    # manuel butonu ile ek direnc olcumu
-    def _next_manual_resistor_component(self) -> str | None:
-        from src.app.routers.status import SYSTEM_STATE
-
-        for comp in ["R3", "R4", "R5", "R6"]:
-            if not SYSTEM_STATE["measurements"].get(comp):
-                return comp
-
-        return None
-
-    # buton kalkti gerek yok
-    def _manual_component_gcode_keys(self, comp: str) -> tuple[str, str]:
-        comp = (comp or "").strip().upper()
-        return (f"{comp}_FEEDER_MOVE", f"{comp}_PICK_Z")
-    
-    # buton kalkti gerek yok
-    def _build_manual_test_lines(self, comp: str) -> list[str]:
-        from src.app.services.gcode_programs import GCODE
-
-        move_key, pick_key = self._manual_component_gcode_keys(comp)
-
-        lines: list[str] = []
-
-        # komponentin yanina git
-        feeder_move = GCODE.get(move_key, "")
-        if feeder_move:
-            lines.extend([s.strip() for s in str(feeder_move).split(";") if s.strip()])
-
-        # pick z hareketi
-        pick_z = GCODE.get(pick_key, "")
-        if pick_z:
-            lines.extend([s.strip() for s in str(pick_z).split(";") if s.strip()])
-
-        # test istasyonuna git
-        move_test = GCODE.get("MOVE_TEST", "")
-        if move_test:
-            lines.extend([s.strip() for s in str(move_test).split(";") if s.strip()])
-
-        # test baskisi
-        test_press = GCODE.get("TEST_PRESS_DWELL", "")
-        if test_press:
-            lines.extend([s.strip() for s in str(test_press).split(";") if s.strip()])
-
-        # tekrar ayni komponent konumuna don
-        if feeder_move:
-            lines.extend([s.strip() for s in str(feeder_move).split(";") if s.strip()])
-
-        return lines
-    # buton kalkti gerek yok
-    def run_manual_test_cycle(self) -> bool:
-        from src.app.routers.status import SYSTEM_STATE
-        from src.app.main import robot_service
-
-        if robot_service is None:
-            self._log("Manual test failed: Robot service not initialized")
-            return False
-
-        comp = self._next_manual_resistor_component()
-        if comp is None:
-            self._log("Manual test skipped: R3-R6 already full")
-            return False
-
-        lines = self._build_manual_test_lines(comp)
-        if not lines:
-            self._log(f"Manual test failed: No G-code lines for {comp}")
-            return False
-
-        SYSTEM_STATE["robot"]["status"] = "running"
-        SYSTEM_STATE["robot"]["current_task"] = f"Manual test {comp}"
-
-        self._log(f"Manual test started for {comp}")
-
-        ok = self._send_many(robot_service, lines)
-        if not ok:
-            self._log(f"Manual test motion failed for {comp}")
-            SYSTEM_STATE["robot"]["status"] = "error"
-            SYSTEM_STATE["robot"]["current_task"] = "Manual test error"
-            return False
-
-        # hareket bittikten sonra manuel olcum al
-        self._run_test_measure(step_id=None, manual=True)
-
-        SYSTEM_STATE["robot"]["status"] = "idle"
-        SYSTEM_STATE["robot"]["current_task"] = "-"
-
-        self._log(f"Manual test finished for {comp}")
-        return True
-    
-    # ---------------------------------------------------------------- 
-    # ---------------------------------------------------------------- 
-    def _run_test_measure(self, step_id: str | None = None, manual: bool = False) -> None:
-        """
-        Test istasyonu adimindan sonra Arduino olcumunu tetikler
-        ve SYSTEM_STATE["teststation"] icini gunceller.
-        """
+    def _run_measurement(self) -> None:
         from src.app.routers.status import SYSTEM_STATE
         from src.app.main import arduino_service
 
         if arduino_service is None:
-            self._log("Test measure skipped: Arduino service not initialized")
+            SYSTEM_STATE["teststation"]["last_result"] = "NO_SERVICE"
+            SYSTEM_STATE["teststation"]["last_voltage_v"] = 0.0
+            SYSTEM_STATE["teststation"]["last_resistance_ohm"] = None
+            SYSTEM_STATE["teststation"]["mode"] = "none"
+            SYSTEM_STATE["teststation"]["value_text"] = "-"
+            SYSTEM_STATE["teststation"]["raw_text"] = ""
+            SYSTEM_STATE["teststation"]["last_updated"] = time.strftime("%Y-%m-%d %H:%M:%S")
+
+            if "measurements" in SYSTEM_STATE:
+                if "result" in SYSTEM_STATE["measurements"]:
+                    SYSTEM_STATE["measurements"]["result"] = "NO_SERVICE"
+                if "voltage" in SYSTEM_STATE["measurements"]:
+                    SYSTEM_STATE["measurements"]["voltage"] = 0.0
+                if "resistance_ohm" in SYSTEM_STATE["measurements"]:
+                    SYSTEM_STATE["measurements"]["resistance_ohm"] = None
+                if "value_text" in SYSTEM_STATE["measurements"]:
+                    SYSTEM_STATE["measurements"]["value_text"] = "-"
+                if "raw_text" in SYSTEM_STATE["measurements"]:
+                    SYSTEM_STATE["measurements"]["raw_text"] = ""
+
             return
 
         try:
-            data = arduino_service.measure()
+            measurement = arduino_service.measure()
 
-            SYSTEM_STATE["teststation"]["mode"] = data.get("mode", "none")
-            SYSTEM_STATE["teststation"]["last_adc"] = data.get("value_text", "-")
-            SYSTEM_STATE["teststation"]["last_voltage_v"] = data.get("voltage", 0.0)
-            SYSTEM_STATE["teststation"]["last_result"] = data.get("result", "UNKNOWN")
+            SYSTEM_STATE["teststation"]["last_result"] = measurement.get("result")
+            SYSTEM_STATE["teststation"]["last_voltage_v"] = measurement.get("voltage", 0.0)
+            SYSTEM_STATE["teststation"]["last_resistance_ohm"] = measurement.get("resistance_ohm")
+            SYSTEM_STATE["teststation"]["mode"] = measurement.get("mode", "none")
+            SYSTEM_STATE["teststation"]["value_text"] = measurement.get("value_text", "-")
+            SYSTEM_STATE["teststation"]["raw_text"] = measurement.get("raw_text", "")
             SYSTEM_STATE["teststation"]["last_updated"] = time.strftime("%Y-%m-%d %H:%M:%S")
 
-            written_to = None
-
-            comp = self._extract_component_from_step(step_id or "")
-            if comp:
-                self._write_measurement_for_component(comp, data)
-                written_to = comp
-
-            # buton kalkti gerek yok
-            # if manual:
-            #     mode = str(data.get("mode", "")).lower()
-            #     if mode == "resistor":
-            #         written_to = self._write_manual_resistor_measurement(data)
-            #         if written_to is None:
-            #             self._log("Manual resistor measurement skipped: R3-R6 already full")
-            #     else:
-            #         self._log("Manual measurement received but not resistor; R3-R6 not updated")
-            # else:
-            #     comp = self._extract_component_from_step(step_id or "")
-            #     if comp:
-            #         self._write_measurement_for_component(comp, data)
-            #         written_to = comp
-
-            if written_to:
-                self._log(f"Test measurement done: {written_to} = {SYSTEM_STATE['measurements'][written_to]}")
-            else:
-                self._log(f"Test measurement done: {data.get('result', 'UNKNOWN')}")
+            if "measurements" in SYSTEM_STATE:
+                if "result" in SYSTEM_STATE["measurements"]:
+                    SYSTEM_STATE["measurements"]["result"] = measurement.get("result")
+                if "voltage" in SYSTEM_STATE["measurements"]:
+                    SYSTEM_STATE["measurements"]["voltage"] = measurement.get("voltage", 0.0)
+                if "resistance_ohm" in SYSTEM_STATE["measurements"]:
+                    SYSTEM_STATE["measurements"]["resistance_ohm"] = measurement.get("resistance_ohm")
+                if "value_text" in SYSTEM_STATE["measurements"]:
+                    SYSTEM_STATE["measurements"]["value_text"] = measurement.get("value_text", "-")
+                if "raw_text" in SYSTEM_STATE["measurements"]:
+                    SYSTEM_STATE["measurements"]["raw_text"] = measurement.get("raw_text", "")
 
         except Exception as e:
-            self._log(f"Test measurement failed: {e}")
+            self._log(f"Measurement error: {e}")
+            SYSTEM_STATE["teststation"]["last_result"] = "ERROR"
+            SYSTEM_STATE["teststation"]["last_voltage_v"] = 0.0
+            SYSTEM_STATE["teststation"]["last_resistance_ohm"] = None
+            SYSTEM_STATE["teststation"]["mode"] = "none"
+            SYSTEM_STATE["teststation"]["value_text"] = "-"
+            SYSTEM_STATE["teststation"]["raw_text"] = ""
+            SYSTEM_STATE["teststation"]["last_updated"] = time.strftime("%Y-%m-%d %H:%M:%S")
 
+            if "measurements" in SYSTEM_STATE:
+                if "result" in SYSTEM_STATE["measurements"]:
+                    SYSTEM_STATE["measurements"]["result"] = "ERROR"
+                if "voltage" in SYSTEM_STATE["measurements"]:
+                    SYSTEM_STATE["measurements"]["voltage"] = 0.0
+                if "resistance_ohm" in SYSTEM_STATE["measurements"]:
+                    SYSTEM_STATE["measurements"]["resistance_ohm"] = None
+                if "value_text" in SYSTEM_STATE["measurements"]:
+                    SYSTEM_STATE["measurements"]["value_text"] = "-"
+                if "raw_text" in SYSTEM_STATE["measurements"]:
+                    SYSTEM_STATE["measurements"]["raw_text"] = ""
 
     def _loop(self) -> None:
         from src.app.routers.status import SYSTEM_STATE
         from src.app.main import robot_service
 
-        if robot_service is None:
-            self._log("Robot service not initialized")
-            SYSTEM_STATE["robot"]["status"] = "error"
-            SYSTEM_STATE["program"]["running"] = False
-            return
-
-        SYSTEM_STATE["robot"]["status"] = "running"
-        SYSTEM_STATE["program"]["running"] = True
-        SYSTEM_STATE["program"]["paused"] = False
-
-        total = len(self.program)
-        SYSTEM_STATE["program"]["total_steps"] = total
-
-        while self.current_step_idx < total:
-            if self._stop_event.is_set():
-                break
-
-            if self._pause_event.is_set():
-                SYSTEM_STATE["program"]["paused"] = True
-                if not self._wait_if_paused():
-                    break
-                SYSTEM_STATE["program"]["paused"] = False
-                SYSTEM_STATE["robot"]["status"] = "running"
-
-            step = self.program[self.current_step_idx]
-
-            SYSTEM_STATE["program"]["current_step"] = self.current_step_idx + 1
-            SYSTEM_STATE["program"]["current_label"] = step.label
-            SYSTEM_STATE["program"]["vacuum_on"] = self.vacuum_on
+        try:
+            if robot_service is None:
+                self._log("Robot service not initialized")
+                SYSTEM_STATE["robot"]["status"] = "error"
+                SYSTEM_STATE["program"]["running"] = False
+                return
 
             SYSTEM_STATE["robot"]["status"] = "running"
-            SYSTEM_STATE["robot"]["current_task"] = step.label
-            self._log(f"STEP {self.current_step_idx + 1}/{total}: {step.label}")
+            SYSTEM_STATE["program"]["running"] = True
+            SYSTEM_STATE["program"]["paused"] = False
 
-            # gcode calistirma
-            ok = self._send_many(robot_service, step.gcode)
-            if not ok:
+            total = len(self.program)
+            SYSTEM_STATE["program"]["total_steps"] = total
+
+            if total == 0:
+                self._log("Program empty")
                 return
-            
 
-            # vision
-            # PICK sonrasi detection
-            if step.id.endswith("_PICK_Z"):
-                self._run_pick_vision(step.id)
+            while self.current_step_idx < total:
+                if self._stop_event.is_set():
+                    break
 
-            
-            # TEST ISTASYONU OLCUM YAPMA -> z ekseninde baskı step'inde calisiyor 
-            # TEST sonrasi arduino olcumu
-            if step.id.endswith("_TEST_PRESS"):
-                self._run_test_measure(step.id, manual=False)
+                step = self.program[self.current_step_idx]
 
-
-            # vision
-            # PLACE sonrasi placement verification
-            if step.id.endswith("_PLACE"):
-                self._run_place_vision(step.id)
-
-
-            # vakum takibinin guncellemesi
-            if step.vacuum_expected is not None:
-                self.vacuum_on = bool(step.vacuum_expected)
+                SYSTEM_STATE["program"]["current_step"] = self.current_step_idx + 1
+                SYSTEM_STATE["program"]["current_label"] = step.label
                 SYSTEM_STATE["program"]["vacuum_on"] = self.vacuum_on
 
-            # yerlestirme bitince PCB'de bitti isaretlemesi yapiliyor
-            # boylelikle UI'de yerlestirilenin rengi degisebilecek
-            # vakum kapandiginda
-            if step.marks_done_component:
-                SYSTEM_STATE["program"]["pcb_done"][step.marks_done_component] = True
+                SYSTEM_STATE["robot"]["status"] = "running"
+                SYSTEM_STATE["robot"]["current_task"] = step.label
 
-            self.current_step_idx += 1
+                self._log(f"STEP {self.current_step_idx + 1}/{total}: {step.label}")
 
-        # finished
-        SYSTEM_STATE["robot"]["status"] = "idle"
-        SYSTEM_STATE["robot"]["current_task"] = "done"
-        SYSTEM_STATE["program"]["running"] = False
-        SYSTEM_STATE["program"]["paused"] = False
-        SYSTEM_STATE["program"]["current_label"] = "done"
-        self._log("GCodeRunner: finished")
+                ok = self._send_many(robot_service, step.gcode)
+                if not ok:
+                    return
+
+                if step.vacuum_expected is not None:
+                    self.vacuum_on = bool(step.vacuum_expected)
+                    SYSTEM_STATE["program"]["vacuum_on"] = self.vacuum_on
+
+                if step.trigger_measurement:
+                    self._run_measurement()
+
+                if step.marks_done_component:
+                    if step.marks_done_component in SYSTEM_STATE["program"]["pcb_done"]:
+                        SYSTEM_STATE["program"]["pcb_done"][step.marks_done_component] = True
+
+                self.current_step_idx += 1
+
+            SYSTEM_STATE["robot"]["status"] = "idle"
+            SYSTEM_STATE["robot"]["current_task"] = "done"
+            SYSTEM_STATE["program"]["running"] = False
+            SYSTEM_STATE["program"]["paused"] = False
+            SYSTEM_STATE["program"]["current_label"] = "done"
+
+            self._log("GCodeRunner: finished")
+
+        except Exception as e:
+            self._log(f"GCodeRunner crashed: {e}")
+            SYSTEM_STATE["robot"]["status"] = "error"
+            SYSTEM_STATE["program"]["running"] = False
 
 
 gcode_runner = None

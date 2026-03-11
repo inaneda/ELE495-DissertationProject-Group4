@@ -1,7 +1,7 @@
 import cv2
 import numpy as np
 import onnxruntime as ort
-
+from picamera2 import Picamera2
 
 class ResistorDiodeDetectionONNX:
 
@@ -103,14 +103,12 @@ class ResistorDiodeDetectionONNX:
         return results
     
     def __call__(self):
-        cap = cv2.VideoCapture(self.capture_index)
-        assert cap.isOpened()
+        picam2 = Picamera2()
+        picam2.configure(picam2.create_preview_configuration(main={"format":"BGR888", "size":(640,640)}))
+        picam2.start()
 
         while True:
-            ret, frame = cap.read()
-            if not ret:
-                break
-
+            frame = picam2.capture_array()
             inp = self.preprocess(frame)
             outputs = self.session.run(None, {self.input_name: inp})
             outputs = self.session.run(None, {self.input_name: inp})
@@ -174,9 +172,5 @@ class ResistorDiodeDetectionONNX:
         cap.release()
         cv2.destroyAllWindows()
 
-
-detector = ResistorDiodeDetectionONNX(
-    0,
-    r"src/app/vision/best.onnx"
-)
+detector = ResistorDiodeDetectionONNX(0)
 detector()

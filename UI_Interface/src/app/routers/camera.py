@@ -159,6 +159,38 @@ def overlay():
         scores=scores,
         class_ids=class_ids,
     )
+    # 2) sabit target alanlar
+    target_areas = [
+        [150, 150, 210, 180],
+        [250, 150, 310, 180],
+        [150, 250, 210, 280],
+        [250, 250, 310, 280],
+    ]
+
+    for i, target_box in enumerate(target_areas):
+        score_result = vision_service.score_target(target_box, boxes)
+
+        tx1, ty1, tx2, ty2 = target_box
+        cv2.rectangle(overlay_img, (tx1, ty1), (tx2, ty2), (255, 0, 0), 2)
+        cv2.putText(
+            overlay_img,
+            f"Target {i}",
+            (tx1, max(15, ty1 - 5)),
+            cv2.FONT_HERSHEY_SIMPLEX,
+            0.5,
+            (255, 0, 0),
+            1
+        )
+
+        cv2.putText(
+            overlay_img,
+            f"Err:% {score_result['error']:.1f}",
+            (tx1 + 5, ty1 + 20),
+            cv2.FONT_HERSHEY_SIMPLEX,
+            0.45,
+            (0, 255, 255),
+            1
+        )
 
     ok, buf = cv2.imencode(".jpg", overlay_img)
     if not ok:
