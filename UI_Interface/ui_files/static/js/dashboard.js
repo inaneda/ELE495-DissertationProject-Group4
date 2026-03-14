@@ -228,6 +228,9 @@ async function sendCmd(name, payload=null){
         const data = await res.json();
         
         if (name === "reset") {
+            // ***
+            resetTargetUI();
+            // ***
             // Backend reset succeeded -> clear UI pairing state too
             // resetPairingUI();
         }
@@ -240,8 +243,84 @@ async function sendCmd(name, payload=null){
     }
 }
 
-// manual test icin fonk.
+// ***
+// eslestirme
+function resetTargetUI() {
+    const r1 = document.getElementById("targetR1");
+    const r2 = document.getElementById("targetR2");
 
+    if (r1) r1.value = "";
+    if (r2) r2.value = "";
+
+    setText("targetViewR1", "-");
+    setText("targetViewR2", "-");
+    setText("resolvedViewR1", "-");
+    setText("resolvedViewR2", "-");
+    
+    updatePCBTargets(null, null);
+}
+
+async function saveResistorTargets() {
+    const r1 = document.getElementById("targetR1")?.value ?? "";
+    const r2 = document.getElementById("targetR2")?.value ?? "";
+
+    if (!r1 || !r2) {
+        alert("Please select target codes for both PCB R1 and PCB R2.");
+        return;
+    }
+
+    try {
+        const res = await apiFetch("/api/commands/", {
+            method: "POST",
+            body: JSON.stringify({
+                name: "set_resistor_targets",
+                payload: {
+                    r1_code: r1,
+                    r2_code: r2
+                }
+            })
+        });
+
+        if (!res.ok) {
+            const txt = await res.text();
+            alert("Saving resistor targets failed.\n" + txt);
+            return;
+        }
+
+        const data = await res.json();
+        console.log("Targets saved:", data);
+        await fetchStatus();
+    } catch (e) {
+        console.error("saveResistorTargets error:", e);
+        alert("Could not save resistor targets.");
+    }
+}
+
+function updatePCBTargets(r1, r2){
+
+    const padR1 = document.getElementById("padR1");
+    const padR2 = document.getElementById("padR2");
+
+    const map = {
+        "102":"1k",
+        "472":"4.7k",
+        "103":"10k",
+        "333":"33k",
+        "104":"100k"
+    };
+
+    if(padR1){
+        padR1.innerText = r1 ? `R1\n${map[r1]}` : "R1";
+    }
+
+    if(padR2){
+        padR2.innerText = r2 ? `R2\n${map[r2]}` : "R2";
+    }
+}
+
+// ***
+
+// manual test icin fonk.
 
 // // send plan butonu icin fonksiyon
 // async function sendPlan(){
@@ -356,6 +435,19 @@ async function fetchStatus(){
         if (data.measurements) {
             updateMeasurements(data.measurements);
         }
+
+        // ***
+        const targets = data.resistor_targets || {};
+        const resolved = data.resolved_assignments || {};
+    
+        setText("targetViewR1", targets.R1 ?? "-");
+        setText("targetViewR2", targets.R2 ?? "-");
+
+        updatePCBTargets(targets.R1, targets.R2);
+
+        setText("resolvedViewR1", resolved.R1 ?? "-");
+        setText("resolvedViewR2", resolved.R2 ?? "-");
+        // ***
 
         // program status
         const prog = data.program || {};
@@ -516,19 +608,18 @@ function bindCommandButtons() {
     const resetBtn = document.getElementById("btnReset");
     // const sendPlanBtn = document.getElementById("btnSendPlan");
     const camReloadBtn = document.getElementById("btnCamReload");
-    const btnModeRes = document.getElementById("btnModeRes");
-    const btnModeDio = document.getElementById("btnModeDio");
-    const btnModeNone = document.getElementById("btnModeNone");
     // const btnTestMeasure = document.getElementById("btnTestMeasure");
     // const btnManualTest = document.getElementById("btnManualTest");
     
+    // ***
+    const btnSaveTargets = document.getElementById("btnSaveTargets");
+    if (btnSaveTargets) btnSaveTargets.addEventListener("click", saveResistorTargets);
+    // ***
+
     if (startBtn) startBtn.addEventListener("click", () => sendCmd("start"));
     if (stopBtn) stopBtn.addEventListener("click", () => sendCmd("stop"));
     if (resetBtn) resetBtn.addEventListener("click", () => sendCmd("reset"));
     if (camReloadBtn) camReloadBtn.addEventListener("click", restartCamera);
-    if (btnModeRes) btnModeRes.addEventListener("click", () => sendCmd("set_test_mode", { mode: "resistor" }));
-    if (btnModeDio) btnModeDio.addEventListener("click", () => sendCmd("set_test_mode", { mode: "diode" }));
-    if (btnModeNone) btnModeNone.addEventListener("click", () => sendCmd("set_test_mode", { mode: "none" }));
     // if (btnTestMeasure) btnTestMeasure.addEventListener("click", () => sendCmd("test_measure"));
     // if (sendPlanBtn) sendPlanBtn.addEventListener("click", sendPlan);
     // if (btnManualTest) btnManualTest.addEventListener("click", () => sendCmd("manual_test"));

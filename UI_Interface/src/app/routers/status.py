@@ -71,14 +71,35 @@ SYSTEM_STATE = {
         "raw_text": None
     },
 
+    # olcum ve yerlestirme icin
     "measurements": {
-        "result": None,
-        "voltage": None,
-        "resistance_ohm": None,
-        "value_text": None,
-        "raw_text": None
+        "R1": "-",
+        "R2": "-",
+        "R3": "-",
+        "R4": "-",
+        "R5": "-",
+        "R6": "-",
+        "D1": "-",
+        "D2": "-",
+    },
+        "measurement_ohm": {
+        "R1": None,
+        "R2": None,
+        "R3": None,
+        "R4": None,
+        "R5": None,
+        "R6": None,
+    },
+    "resistor_targets": {
+        "R1": None,   # örn: "102"
+        "R2": None,   # örn: "103"
+    },
+    "resolved_assignments": {
+        "R1": None,   # örn: "R6"
+        "R2": None,   # örn: "R3"
     },
 
+    # - - - - - - - - - - - - - -
     "logs": [],
 
     "image_processing": {

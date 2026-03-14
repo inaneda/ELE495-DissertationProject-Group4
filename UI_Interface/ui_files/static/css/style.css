@@ -152,7 +152,7 @@ and academic-project-appropriate user interface.
 .cmd-start{ background: #b5ebb6; }
 .cmd-stop{ background: #f1afaf; }
 .cmd-reset{ background: #b6d1ff; }
-.cmd-manual{ background: #aeddd8; }
+.cmd-manual{ background: #eaf2f9; }
 
 /* .cmd-undo  { background: #ffd28a; }
 .cmd-clear { background: #ff8f8f; } */
@@ -343,7 +343,7 @@ Pick Order - Place Order
 @media (max-width: 1100px){
   .layout-grid{
     grid-template-columns: 1fr;
-    grid-template-rows: 1fr 1fr 1fr 600px 1fr 1fr;
+    grid-template-rows: auto;
     grid-template-areas:
       "plan"
       "measurements"
@@ -354,9 +354,55 @@ Pick Order - Place Order
       "robot"
       "history";
   }
+  #panel-measurements .pairing-list{
+    max-height: none !important;
+    overflow: visible !important;
+  }
+  /* sadece fixed plan paneli */
+  #panel-plan .panel-body{
+    height: auto !important;
+  }
+  #panel-plan .plan-wrap-fixed{
+    height: auto !important;
+  }
+  #panel-plan .pcb{
+    height: 320px;
+    min-height: 320px;
+  }
+   /* measurements paneli */
+  #panel-measurements{
+    min-height: auto !important;
+  }
+  #panel-measurements .panel-body{
+    height: auto !important;
+    padding-bottom: 10px;
+  }
+  /* test station panel */
+  #panel-test{
+    min-height: auto !important;
+  }
+  #panel-test .panel-body{
+    height: auto !important;
+    padding-bottom: 10px;
+  }
+  #panel-test .panel-body-col{
+    height: auto !important;
+    min-height: 0 !important;
+  }
+  #panel-test .panel-body-col .row{
+    flex: unset !important;
+    overflow: visible !important;
+  }
+
+  .target-config{
+        grid-template-columns: 1fr;
+    }
+  .target-summary-grid{
+      grid-template-columns: 1fr;
+  }
+
   #panel-history{ min-height: 200px; }
 }
-
 
 /* panellerin body kisimindaki iceriklerinin tasmasini onlemek icin */
 .panel-body-col{
@@ -508,4 +554,87 @@ Pick Order - Place Order
     border-radius: 5px;
     font-size: 12px;
     font-weight: 700;
+}
+
+/** *** **/
+.target-config{
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    align-items: end;
+    margin-bottom: 10px;
+}
+
+.target-select{
+    width: 100%;
+    margin-top: 6px;
+    padding: 6px 8px;
+    font-size: 13px;
+    border-radius: 8px;
+    border: 1px solid rgba(0,0,0,0.2);
+    background: #fff;
+    font-weight: 700;
+}
+
+.target-save-btn{
+    width: auto;
+    min-width: 120px;
+    height: 40px;
+    padding: 0 18px;
+}
+
+.pairing-left{
+    font-weight: 700;
+}
+
+#panel-plan .panel-body{
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+#panel-plan .pairing-list{
+  flex: 0 0 auto;
+  max-height: 140px;
+  overflow-y: auto;
+}
+
+#panel-plan .plan-wrap-fixed{
+  flex: 0 0 auto;
+}
+
+.target-summary-grid{
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    margin-bottom: 10px;
+}
+
+.target-summary-card{
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 10px;
+    border-radius: 8px;
+    border: 1px solid rgba(0,0,0,0.12);
+    background: rgba(255,255,255,0.75);
+    font-size: 13px;
+}
+
+.measurements-subtitle{
+  font-size: 12px;
+  opacity: 0.75;
+  padding: 0 10px;
+}
+#panel-measurements .panel-body{
+  height: calc(100% - 70px);
+  overflow: hidden;
+}
+
+#measurementList{
+  height: 100%;
+  overflow-y: auto;
+  padding-right: 4px;
 }
